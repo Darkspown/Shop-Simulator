@@ -9,17 +9,20 @@ namespace ShelfRush.Player
 {
     /// <summary>
     /// Реализация контроллера игрока (plain C#, тикается из GameBootstrap).
-    /// Движение — по вектору ввода с привязанным Transform (View задаётся при создании сцены).
+    /// Движение делегируется в <see cref="PlayerMovement"/>, а ввод приходит уже
+    /// нормализованным через <see cref="IPlayerInput"/> — геймплей не знает, откуда
+    /// был получен input (клавиатура/тач/джойстик/геймпад).
     /// Ведёт «инвентарь» игрока, берёт товар с полки (IStockService) и доставляет заказ клиенту.
     /// </summary>
     public sealed class PlayerController : IPlayerController
     {
         private readonly List<ProductData> _carried = new List<ProductData>();
-        private IInputService _input;
+        private IPlayerInput _input;
         private IStockService _stock;
         private Customers.ICustomerService _customers;
         private PlayerConfig _config;
         private IEventBus _events;
+        private PlayerMovement _movement;
 
         public Transform View { get; set; }
 
@@ -29,11 +32,12 @@ namespace ShelfRush.Player
 
         public void Initialize(ServiceLocator services)
         {
-            _input = services.Get<IInputService>();
+            _input = services.Get<IPlayerInput>();
             _stock = services.Get<IStockService>();
             _customers = services.Get<Customers.ICustomerService>();
             _events = services.Get<IEventBus>();
             services.TryGet<PlayerConfig>(out _config);
+            _movement = new PlayerMovement(_config);
         }
 
         public void Dispose()
@@ -44,18 +48,15 @@ namespace ShelfRush.Player
             _customers = null;
             _events = null;
             _config = null;
+            _movement = null;
         }
 
         public void Tick(float deltaTime)
         {
-            if (View == null || _input == null) return;
+            if (View == null || _input == null || _movement == null) return;
 
-            var move = _input.Move;
-            if (move.sqrMagnitude > 0.0001f)
-            {
-                var step = move * (_config != null ? _config.MoveSpeed : 4f) * deltaTime;
-                View.position += new Vector3(step.x, 0f, step.y);
-            }
+            // Движение: нормализованный ввод -> PlayerMovement (без знания об источнике ввода).
+            _movement.Move(View, _input.MoveWorld, deltaTime);
         }
 
         public bool TryPickUp(ShelfData shelf)

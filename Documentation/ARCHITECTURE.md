@@ -68,11 +68,19 @@ Assets/Scripts/
   иначе клавиатура/мышь) и транслирует его сигналы.
 - Провайдеры (`KeyboardMouseInputProvider`, `TouchInputProvider`, `GamepadInputProvider`) —
   чтение New Input System (`Keyboard/Gamepad/Touchscreen.current`) без MonoBehaviour.
+- **`IPlayerInput` / `PlayerInput`** — «gameplay-facing» слой ввода (единый для
+  PC/Mobile/WebGL/Yandex): `dead zone → sensitivity → input smoothing`, опциональное
+  слияние оси виртуального джойстика (`IVirtualJoystick`). Отдаёт нормализованный
+  `Move`/`MoveWorld`. Геймплей зависит только от него.
+- `PlayerInputConfig` — настройки единого ввода (SO).
 
 ### 3.3 Player
-- `PlayerController` — движение по `IInputService.Move`, инвентарь (`Carried`, `CarryCapacity`),
-  взятие товара с полки (`IStockService`) и выполнение заказа клиента
+- `PlayerController` — «оркестратор»: через `IPlayerInput` получает нормализованный ввод,
+  делегирует движение в `PlayerMovement`; ведёт инвентарь (`Carried`, `CarryCapacity`),
+  берёт товар с полки (`IStockService`) и выполняет заказ клиента
   (`ICustomerService.TryCompleteOrder`).
+- `PlayerMovement` — движение по готовому нормализованному вектору (XZ); **не читает
+  никакой input** (нет `Input.GetAxis`/`Keyboard`/`Touch`/`Joystick`).
 - `PlayerConfig` — настройки движения/вместимости.
 
 ### 3.4 Products
@@ -127,7 +135,8 @@ Assets/Scripts/
 Диаграмма «кто кого вызывает». Стрелка `A → B` означает «A зависит от B».
 
 ```
-PlayerController → IInputService, IStockService, ICustomerService, IEventBus, PlayerConfig
+PlayerController → IPlayerInput, IStockService, ICustomerService, IEventBus, PlayerConfig
+PlayerInput ─────────► IInputService, PlayerInputConfig
 LevelManager ────► IStockService, ICustomerService, IEventBus
 CustomerService ─► IProductCatalog, IEventBus
 StockService ────► IEventBus
@@ -153,7 +162,8 @@ GameBootstrap → создаёт и инициализирует ВСЕ серв
 | `IGameService` | базовый контракт сервиса (init/dispose) | все системы |
 | `ITickable` | сервис, обновляемый каждый кадр | кор-тикер `GameBootstrap` |
 | `IEventBus` | шина событий | все системы |
-| `IInputService` / `IInputProvider` | единый ввод (`Move`, `Interact`) | Player, UI |
+| `IInputService` / `IInputProvider` | устройства ввода (`Move`, `Interact`) | `PlayerInput`, UI |
+| `IPlayerInput` / `PlayerInput` | единый gameplay-ввод (`Move`, `MoveWorld`, `Interact`) | Player |
 | `IStockService` | учёт запасов полок (`TryTakeProduct`, `Restock`) | Player, Level |
 | `ICustomerService` | заказы клиентов (`CreateOrder`, `TryCompleteOrder`) | Player, Level |
 | `IEconomyService` | экономика (`Wallet`, `AddCurrency`, `TrySpend`) | Level, UI |

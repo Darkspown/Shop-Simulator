@@ -12,11 +12,14 @@
       работают. DOTween собран в DLL, asmdef нет (живёт в глобальной сборке) — учесть.
 - [ ] **Создать игровой asmdef** для `Assets/Scripts` для изоляции игрового кода от
       глобальной сборки и плагинов (LeanPool/CW.Common, LeanCommon, LeanPool — уже asmdef).
-- [ ] **Настроить Input System под игру**:
-      - единая схема: WASD/Arrows (Keyboard) + E (Interact)
-      - Touch: виртуальный джойстик / тач и кнопка взаимодействия (группа `Touch`)
-      - Gamepad (опционально, WebGL)
-      - сгенерировать C#-класс из `InputSystem_Actions.inputactions`.
+- [ ] **Настроить Input System под игру** (базовый единый конвейер реализован —
+      см. `CROSS_PLATFORM.md`):
+      - единая схема: WASD/Arrows (Keyboard) + E (Interact) — ✅ `KeyboardMouseInputProvider`
+      - Touch: свайп-джойстик — ✅ `TouchInputProvider`; виртуальный джойстик —
+        ✅ `VirtualJoystick` prefab (подключается вручную)
+      - Gamepad (опционально, WebGL) — ✅ `GamepadInputProvider`
+      - оставшееся: продублировать при необходимости через экшены из
+        `InputSystem_Actions.inputactions` (сейчас провайдеры читают устройства напрямую).
 - [ ] **Добавить кастомные Layers/Tags** (например: `Player`, `Product`, `Shelf`,
       `Interactable`, слой `Environment`) в `TagManager`.
 - [ ] **Добавить сцену(ы) в `EditorBuildSettings`** (сейчас `m_Scenes: []`).
@@ -25,7 +28,8 @@
 
 ## Player
 
-- [ ] `PlayerController` / `PlayerMovement` (единый API, источники ввода по платформе).
+- [x] `PlayerController` / `PlayerMovement` (единый API `IPlayerInput` + `PlayerMovement`,
+      источники ввода по платформе).
 - [ ] Использовать **PolyOne Free Stickman** (`Free Pack - Stick Man.prefab` +
       `Stickman_Controler.controller`) как визуальную часть игрока (через prefab/runtime).
 - [ ] Анимации движения/игле (через Animator Controller).

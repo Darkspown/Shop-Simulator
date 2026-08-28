@@ -28,8 +28,13 @@ namespace ShelfRush.Core
         [Header("DATA (ScriptableObjects)")]
         [SerializeField] private EconomyConfig economyConfig;
         [SerializeField] private PlayerConfig playerConfig;
+        [SerializeField] private PlayerInputConfig playerInputConfig;
         [SerializeField] private ProductData[] products;
         [SerializeField] private LevelConfig[] levels;
+
+        [Header("MOBILE (optional)")]
+        [Tooltip("Экземпляр виртуального джойстика на Canvas (prefab). Если не назначен — мобильный ввод работает свайпом.")]
+        [SerializeField] private VirtualJoystick mobileJoystick;
 
         private ServiceLocator _services;
         private IEventBus _eventBus;
@@ -73,6 +78,7 @@ namespace ShelfRush.Core
             var pool = new LeanPoolService();
             var catalog = new ProductCatalog(products ?? Array.Empty<ProductData>());
             var input = new InputService();
+            var playerInput = new PlayerInput();
             var wallet = new Wallet();
             var economy = new EconomyService(wallet);
             var stock = new StockService();
@@ -88,6 +94,7 @@ namespace ShelfRush.Core
             _services.Register<IPoolService>(pool);
             _services.Register<IProductCatalog>(catalog);
             _services.Register<IInputService>(input);
+            _services.Register<IPlayerInput>(playerInput);
             _services.Register<IEconomyService>(economy);
             _services.Register<IStockService>(stock);
             _services.Register<ICustomerService>(customers);
@@ -97,6 +104,10 @@ namespace ShelfRush.Core
             // Данные-конфиги доступны для Lookup (не сервисы).
             if (economyConfig != null) _services.Register(economyConfig);
             if (playerConfig != null) _services.Register(playerConfig);
+            if (playerInputConfig != null) _services.Register(playerInputConfig);
+
+            // Опциональный виртуальный джойстик (mobile UI) встраивается в ввод вручную.
+            if (mobileJoystick != null) playerInput.AttachJoystick(mobileJoystick);
 
             // Порядок инициализации = порядок зависимостей (родитель раньше детей).
             Initialize(gameState);
@@ -105,6 +116,7 @@ namespace ShelfRush.Core
             Initialize(pool);
             Initialize(catalog);
             Initialize(input);
+            Initialize(playerInput);
             Initialize(economy);
             Initialize(stock);
             Initialize(customers);
