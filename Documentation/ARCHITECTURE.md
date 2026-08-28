@@ -1,142 +1,301 @@
 # ARCHITECTURE — Shelf Rush
 
-> Текущее архитектурное описание проекта. Состояние на момент аудита — проект на
-> начальном этапе (greenfield): игрового кода нет. Этот документ фиксирует **целевую**
-> архитектуру и текущий базис, на который она должна ложиться.
+> Базовый каркас игровой архитектуры. Описывает реализованные модули, зависимости,
+> интерфейсы, события и порядок инициализации.
+> Дата: 28.08.2026 | Автор: Cline.
 
 ---
 
-## 1. Целевые принципы
+## 1. Обзор
 
-- **SOLID**, разделение ответственности, отсутствие «God Object».
-- **Data-driven design**: данные/настройки — в `ScriptableObject`, логика — в компонентах.
-- **Интерфейсы + события** для связи между системами.
-- **Dependency Injection / Service Locator** там, где оправдано (разд. 5).
-- **Object pooling** через LeanPool для часто создаваемых объектов.
-- **Единый gameplay-API** + разные источники ввода (PC/Mobile/WebGL/Yandex).
-- Отсутствие `FindObjectOfType`/`GetComponent` в `Update`, строковой идентификации категорий,
-  hardcoded логики товаров/полок.
+Проект является «чистым стартом». Реализована **базовая архитектура** без сцены и без
+игровых сущностей в редакторе: весь игровой код — это **plain C# сервисы** (не MonoBehaviour)
+за исключением единственной точки входа `GameBootstrap`. Данные вынесены в `ScriptableObject`,
+связь между системами — через `ServiceLocator` (DI без внешних библиотек) и типизированную
+шину событий `EventBus`.
 
----
+Ключевые принципы:
 
-## 2. Текущий базис (что уже есть в проекте)
-
-| Слой | Готовый компонент | Использование |
-|---|---|---|
-| Графика/анимации | Built-in RP, PolyOne Free Stickman (+ Animator Controller) | Игрок |
-| UI | uGUI + **TextMeshPro** (`TMPro`) в составе `com.unity.ugui 2.0.0` | Весь текст/UI |
-| Анимации | **DOTween** (`Assets/Plugins/Demigiant`) | UI/движение/фидбек/награды |
-| Пулинг | **LeanPool** (`Assets/Plugins/CW/LeanPool`, asmdef) | товары/боксы/клиенты/VFX |
-| Платформа | **PluginYourGames (YG2)** + WebGL-шаблон Yandex | сейвы/реклама/платформа |
-| Ввод | **New Input System** (`com.unity.inputsystem`) | единая схема ввода |
+- **SOLID**, отсутствие «God Object».
+- **Data-driven**: данные в `ScriptableObject`, логика в сервисах.
+- **Интерфейсы вместо конкретных классов** — каждой системе даётся только то, что ей нужно.
+- **События вместо прямой связи** — публикация/подписка через `EventBus`.
+- **Минимум MonoBehaviour** — только `GameBootstrap` (и будущие view-компоненты на сцене).
+- **Один gameplay-API** + разные источники ввода (PC/Mobile/WebGL/Yandex).
 
 ---
 
-## 3. Предлагаемая структура каталогов `Assets/Scripts`
+## 2. Структура кода
+
+Каталог `Assets/Scripts` разбит на модули по зонам ответственности:
 
 ```
 Assets/Scripts/
-├── Core/                 # bootstrap, ServiceLocator/DI, EventBus, PlayerLoop
-├── Input/                # единый IInputProvider + адаптеры (Keyboard/Mouse, Touch, Gamepad)
-├── Player/               # PlayerController, PlayerMovement, PlayerAnimation, Interaction
-├── Products/             # ProductData (SO), Product, ProductSpawner, ProductPool
-├── Shelves/              # ShelfData (SO), Shelf, ShelfView, StockService
-├── Customers/            # Customer, CustomerSpawner, CustomerFlow
-├── Levels/               # LevelConfig (SO), LevelManager, LevelBootstrap
-├── Economy/              # EconomyService, Wallet, RewardService
-├── Save/                 # ISaveService, PlayerPrefsSave, YandexSave
-├── UI/                   # UIManager, панели, HUD, VirtualJoystick
-├── Yandex/               # YandexService-обёртка над YG2 (ads/saves/ready/lang)
-└── Interfaces/           # общие интерфейсы и события
+├── Core/        # ServiceLocator, EventBus, IGameService/ITickable, GameStateMachine, GameBootstrap
+├── Input/       # IInputProvider/IInputService + провайдеры (клавиатура/тач/геймпад)
+├── Player/      # PlayerController (движение, инвентарь), PlayerConfig
+├── Products/    # ProductData (SO), каталог IProductCatalog/ProductCatalog
+├── Shelves/     # ShelfData (SO), учёт запасов IStockService/StockService
+├── Customers/   # Модель заказа, ICustomerService/CustomerService
+├── Levels/      # LevelConfig (SO), ILevelManager/LevelManager
+├── Economy/     # Wallet, CurrencyType, IEconomyService/EconomyService, EconomyConfig
+├── Save/        # SaveData, ISaveService/PlayerPrefsSaveService
+├── Platform/    # IPlatformService/PlatformService (обёртка платформы)
+├── UI/          # Контракт IHUDView + UIService (трансляция событий в UI)
+└── Pooling/     # IPoolService/LeanPoolService (обёртка над LeanPool)
 ```
 
-Каталог `Assets/Scripts` снабжается собственным **`asmdef`** для изоляции игрового кода.
+Все типы в корневой сборке `Assembly-CSharp`. LeanPool подключается как asmdef-плагин
+и доступен автоматически.
 
 ---
 
-## 4. Слои и зависимости
+## 3. Модули и их ответственность
+
+### 3.1 Core
+- `IGameService` — контракт сервиса: `Initialize(ServiceLocator)` и `Dispose()`.
+- `ITickable` — сервис, обновляемый каждый кадр единым тикером (`GameBootstrap.Update`).
+- `ServiceLocator` — реестр сервисов (регистрация по интерфейсу, `Get<T>()` / `TryGet<T>()`).
+- `EventBus` — типизированная шина событий (`Subscribe<T>`/`Publish<T>`, подписка = `IDisposable`).
+- `GameStateMachine` — глобальный lifecycle (`GameState`), публикует `GameStateChangedEvent`.
+- `GameEvents` — readonly-структуры-события (payload без логики).
+- `GameBootstrap` — **единственный MonoBehaviour**: строит locator/event bus, создаёт,
+  регистрирует и инициализирует все сервисы в порядке зависимостей, тикает `ITickable`.
+
+### 3.2 Input
+- `IInputProvider` — базовый контракт источника ввода (`Move`, событие `Interact`).
+- `IInputService` — выбирает активный провайдер (тач на мобильных, геймпад при подключении,
+  иначе клавиатура/мышь) и транслирует его сигналы.
+- Провайдеры (`KeyboardMouseInputProvider`, `TouchInputProvider`, `GamepadInputProvider`) —
+  чтение New Input System (`Keyboard/Gamepad/Touchscreen.current`) без MonoBehaviour.
+
+### 3.3 Player
+- `PlayerController` — движение по `IInputService.Move`, инвентарь (`Carried`, `CarryCapacity`),
+  взятие товара с полки (`IStockService`) и выполнение заказа клиента
+  (`ICustomerService.TryCompleteOrder`).
+- `PlayerConfig` — настройки движения/вместимости.
+
+### 3.4 Products
+- `ProductData` — ScriptableObject товара (id, имя, спрайт, prefab, цена).
+- `IProductCatalog` / `ProductCatalog` — каталог всех товаров (строится на бустрапе).
+
+### 3.5 Shelves
+- `ShelfData` — ScriptableObject полки (товар, вместимость, точки размещения).
+- `IStockService` / `StockService` — учёт остатков: `RegisterShelf`, `GetStock`,
+  `TryTakeProduct`, `Restock`; публикует `ShelfStockChangedEvent`.
+
+### 3.6 Customers
+- `CustomerOrder` — модель заказа (товар, количество, награда, лимит времени).
+- `CustomerService` — создаёт заказы из каталога, ведёт таймеры; при выполнении публикует
+  `CustomerOrderCompletedEvent`, при тайм-ауте — `CustomerLeftEvent`.
+
+### 3.7 Economy
+- `CurrencyType`, `Wallet` — балансы валют (data-модель с событием `Changed`).
+- `IEconomyService` / `EconomyService` — начисление/списание, публикация `CurrencyChangedEvent`,
+  авто-награда за выполненный заказ.
+
+### 3.8 Levels
+- `LevelConfig` — ScriptableObject уровня (полки, товары, цель заказов, лимит времени).
+- `ILevelManager` / `LevelManager` — старт/пауза/перезапуск, таймер, прогресс (по
+  `CustomerOrderCompletedEvent`), публикует `LevelStartedEvent`/`LevelCompletedEvent`/
+  `LevelPauseChangedEvent`; применяет паузу по `GamePauseRequestedEvent`.
+
+### 3.9 Save
+- `SaveData` — сериализуемый снимок (монеты, кристаллы, прогресс, язык).
+- `ISaveService` / `PlayerPrefsSaveService` — локальное сохранение (PlayerPrefs + JsonUtility).
+  (Облачный save Yandex — отдельная реализация интерфейса.)
+
+### 3.10 Platform
+- `IPlatformService` / `PlatformService` — единая обёртка платформы: пауза при потере фокуса
+  (`PauseToggled`, публикация `GamePauseRequestedEvent`), язык, сигнал ready, реклама
+  (interstitial/rewarded), запрос save. Yandex-реализация (YG2) подключается отдельным классом.
+
+### 3.11 UI
+- `IHUDView` — контракт HUD (реализуется компонентом на Canvas).
+- `UIService` — подписывается на события и транслирует их в `IHUDView` (без MonoBehaviour).
+
+### 3.12 Pooling
+- `IPoolService` — абстракция пула (`Spawn`/`Despawn`/`DespawnAll`).
+- `LeanPoolService` — обёртка над `Lean.Pool.LeanPool`.
+
+
+
+---
+
+## 4. Зависимости систем
+
+Диаграмма «кто кого вызывает». Стрелка `A → B` означает «A зависит от B».
 
 ```
-UI ───────────────► Core (locator/events)
-Gameplay systems ─► Core
-Gameplay systems ─► Interfaces
-Player ───────────► Input (IInputProvider), Core
-Products/Shelves ─► Products/Shelves (data), Core
-Save ─────────────► Yandex (YG2) / PlayerPrefs
-Economy ──────────► Core (events), Save
-Yandex ───────────► PluginYourGames (YG2) — единственная точка работы с SDK
+PlayerController → IInputService, IStockService, ICustomerService, IEventBus, PlayerConfig
+LevelManager ────► IStockService, ICustomerService, IEventBus
+CustomerService ─► IProductCatalog, IEventBus
+StockService ────► IEventBus
+EconomyService ──► Wallet, IEventBus, EconomyConfig
+UIService ───────► IEventBus (+ IHUDView)
+PlatformService ─► IEventBus
+LeanPoolService ─► Lean.Pool.LeanPool (плагин)
+PlayerPrefsSave  ─► PlayerPrefs/JsonUtility (Unity)
+InputService ────► провайдеры ввода (New Input System)
+
+GameBootstrap → создаёт и инициализирует ВСЕ сервисы (ServiceLocator + EventBus)
 ```
 
-Зависимость «сверху вниз»: **UI/Сцены → игровые системы → Core**.
-Плагины (DOTween/LeanPool/YG2/TMPro) потребляются через тонкие обёртки или напрямую
-внутри своих слоёв без распространения на всю архитектуру.
+Правило: игровая логика знает только интерфейсы + `IEventBus`, но не конкретные системы
+и сторонние SDK (YG2, DOTween и т.п.). Сторонние плагины употребляются через тонкие обёртки.
 
 ---
 
-## 5. Dependency Injection / Service Locator
+## 5. Основные интерфейсы
 
-- Ввести лёгкий **ServiceLocator** (без сторонних DI-библиотек) как контейнер сервисов
-  (EconomyService, SaveService, YandexService и т.д.).
-- Инициализация — через **Scene Bootstrap** (объект-ориджинатор), который регистрирует
-  сервисы по порядку и только затем разрешает остальным системам выполняться.
-- Сервисы не должны создаваться через `FindObjectOfType`; компоненты получают зависимости
-  через конструктор/`Init(...)` от Bootstrap или через осознанный lookup в Locator.
+| Интерфейс | Роль | Где потребляется |
+|---|---|---|
+| `IGameService` | базовый контракт сервиса (init/dispose) | все системы |
+| `ITickable` | сервис, обновляемый каждый кадр | кор-тикер `GameBootstrap` |
+| `IEventBus` | шина событий | все системы |
+| `IInputService` / `IInputProvider` | единый ввод (`Move`, `Interact`) | Player, UI |
+| `IStockService` | учёт запасов полок (`TryTakeProduct`, `Restock`) | Player, Level |
+| `ICustomerService` | заказы клиентов (`CreateOrder`, `TryCompleteOrder`) | Player, Level |
+| `IEconomyService` | экономика (`Wallet`, `AddCurrency`, `TrySpend`) | Level, UI |
+| `ILevelManager` | уровни (`StartLevel`, `SetPaused`) | GameBootstrap, UI |
+| `IPlayerController` | контроллер игрока | сцена/UI (будущее) |
+| `IProductCatalog` | каталог товаров | CustomerService |
+| `ISaveService` | сохранение (PlayerPrefs/облако) | Economy/Level (будущее) |
+| `IPlatformService` | платформа (пауза, реклама, язык) | Level, Bootstrap |
+| `IPoolService` | пулинг объектов | Products/Customers (будущее) |
+| `IHUDView` | вью HUD | UIService |
 
 ---
 
-## 6. Ввод (Input)
+## 6. Игровые события (EventBus)
 
-Единый API:
+Payload-структуры объявлены в `Core/GameEvents.cs`:
 
+| Событие | Публикует | Слушают |
+|---|---|---|
+| `GameStateChangedEvent` | `GameStateMachine` | UI |
+| `CurrencyChangedEvent` | `EconomyService` | UI |
+| `ProductPickedEvent` | `PlayerController` | UI |
+| `ProductDeliveredEvent` | `CustomerService` | UI |
+| `ShelfStockChangedEvent` | `StockService` | UI |
+| `CustomerOrderCreatedEvent` | `CustomerService` | UI |
+| `CustomerOrderCompletedEvent` | `CustomerService` | **Economy** (награда), **LevelManager** (прогресс), UI |
+| `CustomerLeftEvent` | `CustomerService` | LevelManager |
+| `LevelStartedEvent` | `LevelManager` | UI |
+| `LevelCompletedEvent` | `LevelManager` | UI |
+| `LevelPauseChangedEvent` | `LevelManager` | UI |
+| `GamePauseRequestedEvent` | `PlatformService` | **LevelManager** (применяет паузу) |
+
+---
+
+## 7. Lifecycle и порядок инициализации
+
+### Lifecycle состояний (`GameState`)
 ```
-interface IInputProvider
-{
-    Vector2 Move { get; }        // нормализованный вектор
-    event Action OnInteract;     // кнопка взаимодействия (E/Enter/первый тач/joystick)
-}
+Boot → MainMenu → LevelPlaying ⇄ LevelPaused → LevelCompleted → (GameOver)
+```
+`GameStateMachine.Set()` публикует `GameStateChangedEvent`. Никто, кроме неё, не меняет
+состояние напрямую.
+
+### Порядок инициализации в `GameBootstrap.Build()`
+1. Создаются `EventBus` и `ServiceLocator` (инфраструктура).
+2. Регистрируются ВСЕ сервисы по интерфейсам (locator заполняется целиком).
+3. Конфиги (`EconomyConfig`, `PlayerConfig`) тоже регистрируются для `Get<T>()`.
+4. `Initialize(...)` в порядке зависимостей (родитель раньше детей):
+   1. `GameStateMachine`
+   2. `PlatformService`
+   3. `PlayerPrefsSaveService`
+   4. `LeanPoolService`
+   5. `ProductCatalog`
+   6. `InputService`
+   7. `EconomyService`
+   8. `StockService`
+   9. `CustomerService`
+   10. `PlayerController`
+   11. `UIService`
+   12. `LevelManager`
+5. `gameState.Set(GameState.MainMenu)` — старт жизненного цикла.
+
+Каждый кадр `GameBootstrap.Update()` вызывает `Tick(deltaTime)` у всех `ITickable`.
+При выгрузке `OnDestroy()` сервисы `Dispose()` в обратном порядке.
+
+
+
+---
+
+## 8. Data flow (ключевые последовательности)
+
+### Взятие товара с полки игроком
+```
+IInputService.Interact → PlayerController.TryPickUp(shelf)
+   → IStockService.TryTakeProduct(shelf) : остаток −1
+   → EventBus.Publish(ProductPickedEvent)
+   → EventBus.Publish(ShelfStockChangedEvent)
+   → PlayerController.Carried += product
 ```
 
-- `KeyboardMouseInputProvider` — WASD / стрелки, E — взаимодействие, Mouse при необходимости.
-- `TouchInputProvider` — виртуальный джойстик / тач, кнопка взаимодействия.
-- `GamepadInputProvider` — опционально (WebGL).
-- **Выбор** провайдера — на основе платформы/устройств, один gameplay-API для всех платформ.
+### Выполнение заказа клиента (клиент → экономика → прогресс → UI)
+```
+PlayerController.TryDeliver(order)
+   → ICustomerService.TryCompleteOrder(order, product)
+      → EventBus.Publish(CustomerOrderCompletedEvent)
+      → EventBus.Publish(ProductDeliveredEvent)
+   → EconomyService.OnOrderCompleted: AddCurrency(Coins, reward)
+      → EventBus.Publish(CurrencyChangedEvent)
+   → LevelManager.OnOrderCompleted: CompletedOrders += 1
+      → при цели → EventBus.Publish(LevelCompletedEvent)
+   → UIService транслирует события в IHUDView (баланс/заказ/прогресс)
+```
+
+### Смена уровня
+```
+ILevelManager.StartLevel(index)
+   → IStockService.RegisterShelf(shelf) для каждой полки
+   → EventBus.Publish(LevelStartedEvent)
+   → таймер тикает; попытка заказа → ICustomerService.CreateOrder(...)
+```
+
+### Пауза со стороны платформы
+```
+PlatformService (потеря фокуса) → EventBus.Publish(GamePauseRequestedEvent(true))
+   → LevelManager.SetPaused(true) → EventBus.Publish(LevelPauseChangedEvent(true)) → UI
+```
 
 ---
 
-## 7. Игровые данные (ScriptableObjects)
+## 9. Где будут MonoBehaviour (не созданы осознанно)
 
-- `ProductData` — спрайт/модель, цена, имя, id (перечисление/enum или SO-ссылка — **не строки**).
-- `ShelfData` — товары, вместимость, позиции размещения.
-- `LevelConfig` — состав полок/клиентов/порядок уровней.
-- `EconomyConfig` — стартовый баланс, цены, награды.
-- `PoolConfig`/ссылки на prefab'ы пулов (LeanPool).
+В базе только один MonoBehaviour — `GameBootstrap`. При реализации сцены появятся
+view-компоненты (без изменения архитектуры):
 
----
-
-## 8. Взаимодействие с платформой (Yandex)
-
-Единственная обёртка `YandexService` (поверх `YG2`):
-- сейвы cloud/local (`YG2` save API),
-- реклама inter/rewarded (`nowInterAdv`, `nowRewardAdv`, события),
-- `GameReadyAPI`, `GameplayStart/Stop`,
-- язык (`infoYG.Basic`), пауза при рекламе.
-Игровая логика зависит только от `ISaveService`/абстракций и не знает про Yandex напрямую.
+- **View-компоненты** на объектах сцены: `PlayerView` (движение/анимации), `ShelfView`,
+  `ProductView`, `CustomerView` — реализуют интерфейсы/контракты, а не содержат логику.
+- **UI**: компонент-реализация `IHUDView` (Canvas, TMPro), виртуальный джойстик для тача.
+- Будущие реализации уже объявленных интерфейсов (Yandex и т.п.).
 
 ---
 
-## 9. Анти-паттерны (запрещено)
+## 10. Анти-паттерны (запрещено)
 
-- `FindObjectOfType` в `Update` / постоянный `GetComponent` в `Update`.
-- Строки-идентификаторы категорий/товаров.
-- Hardcoded логика товаров/полок/уровней.
-- God Object / огромные MonoBehaviour.
-- Отдельные gameplay-системы под каждую платформу (единый API + разные источники ввода).
+- `FindObjectOfType` / `GetComponent` в `Update` и «God Object».
+- Строковая идентификация категорий/товаров в игровой логике (ид — по ссылке на объект;
+  строковый `Id` — только для сохранений).
+- Hardcoded логика товаров/полок/уровней (всё — в `ScriptableObject`).
+- Прямые обращения игровой логики к сторонним SDK (YG2, DOTween и т.п.) — через обёртки.
 - Статическое глобальное состояние без необходимости.
 
 ---
 
-## 10. Платформенная компиляция
+## 11. Статус и следующие шаги
 
-- `UNITY_*` символы — только там, где это действительно необходимо (например,
-  `#if UNITY_WEBGL && !UNITY_EDITOR` внутри Yandex-обёртки).
-- Gameplay-код — кроссплатформенный, без директив.
+Реализовано (компилируется, 0 ошибок):
+- `Core` (locator, event bus, сервисы, state machine, bootstrap),
+- `Input` (единый ввод + провайдеры),
+- `Player`, `Products`, `Shelves`, `Customers`, `Economy`, `Levels`,
+- `Save` (PlayerPrefs), `Platform` (база), `UI` (трансляция), `Pooling` (LeanPool).
+
+Запланировано (без изменения архитектуры):
+- asmdef-изоляция игрового кода (по рекомендациям аудита);
+- Yandex-реализации `IPlatformService`/`ISaveService` через YG2;
+- компоненты-вью и UI (реализации `IHUDView`), конфиги-ассеты, сцена;
+- DOTween-анимации и настройка `DOTweenSettings`.
