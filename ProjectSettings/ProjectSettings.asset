@@ -83,7 +83,7 @@ PlayerSettings:
   androidApplicationEntry: 2
   defaultIsNativeResolution: 1
   macRetinaSupport: 1
-  runInBackground: 1
+  runInBackground: 0
   muteOtherAudioSources: 0
   Prepare IOS For Recording: 0
   Force IOS Speakers When Recording: 0
@@ -634,17 +634,17 @@ PlayerSettings:
   blurSplashScreenBackground: 1
   spritePackerPolicy: 
   webGLMemorySize: 16
-  webGLExceptionSupport: 1
+  webGLExceptionSupport: 2
   webGLNameFilesAsHashes: 0
   webGLShowDiagnostics: 0
   webGLDataCaching: 1
   webGLDebugSymbols: 0
   webGLEmscriptenArgs: 
   webGLModulesDirectory: 
-  webGLTemplate: APPLICATION:Default
+  webGLTemplate: PROJECT:YandexGames
   webGLAnalyzeBuildSize: 0
   webGLUseEmbeddedResources: 0
-  webGLCompressionFormat: 1
+  webGLCompressionFormat: 0
   webGLWasmArithmeticExceptions: 0
   webGLLinkerTarget: 1
   webGLThreadsSupport: 0
@@ -661,7 +661,25 @@ PlayerSettings:
   webGLCloseOnQuit: 0
   webWasm2023: 0
   webEnableSubmoduleStrippingCompatibility: 0
-  scriptingDefineSymbols: {}
+  scriptingDefineSymbols:
+    Android: DOTWEEN;YandexGamesPlatform_yg;PLUGIN_YG_2;TMP_YG2
+    EmbeddedLinux: DOTWEEN
+    GameCoreScarlett: DOTWEEN
+    GameCoreXboxOne: DOTWEEN
+    Kepler: DOTWEEN
+    LinuxHeadlessSimulation: DOTWEEN;YandexGamesPlatform_yg;PLUGIN_YG_2;TMP_YG2
+    Nintendo Switch: DOTWEEN;YandexGamesPlatform_yg;PLUGIN_YG_2;TMP_YG2
+    PS4: DOTWEEN;YandexGamesPlatform_yg;PLUGIN_YG_2;TMP_YG2
+    PS5: DOTWEEN;YandexGamesPlatform_yg;PLUGIN_YG_2;TMP_YG2
+    QNX: DOTWEEN
+    ReservedCFE: DOTWEEN
+    Standalone: DOTWEEN;YandexGamesPlatform_yg;PLUGIN_YG_2;TMP_YG2
+    VisionOS: DOTWEEN
+    WebGL: DOTWEEN;YandexGamesPlatform_yg;PLUGIN_YG_2;TMP_YG2
+    Windows Store Apps: DOTWEEN;YandexGamesPlatform_yg;PLUGIN_YG_2;TMP_YG2
+    XboxOne: DOTWEEN;YandexGamesPlatform_yg;PLUGIN_YG_2;TMP_YG2
+    iPhone: DOTWEEN;YandexGamesPlatform_yg;PLUGIN_YG_2;TMP_YG2
+    tvOS: DOTWEEN;YandexGamesPlatform_yg;PLUGIN_YG_2;TMP_YG2
   additionalCompilerArguments: {}
   platformArchitecture: {}
   scriptingBackend:
@@ -669,7 +687,8 @@ PlayerSettings:
   il2cppCompilerConfiguration: {}
   il2cppCodeGeneration: {}
   il2cppStacktraceInformation: {}
-  managedStrippingLevel: {}
+  managedStrippingLevel:
+    WebGL: 4
   incrementalIl2cppBuild: {}
   suppressCommonWarnings: 1
   allowUnsafeCode: 0
