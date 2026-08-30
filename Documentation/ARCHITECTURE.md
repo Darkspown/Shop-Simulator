@@ -34,6 +34,7 @@ Assets/Scripts/
 ├── Core/        # ServiceLocator, EventBus, IGameService/ITickable, GameStateMachine, GameBootstrap
 ├── Input/       # IInputProvider/IInputService + провайдеры (клавиатура/тач/геймпад)
 ├── Player/      # PlayerController (движение, инвентарь), PlayerConfig
+│   └── View/    # MonoBehaviour-вью на prefab (PlayerController/Movement/Interaction/Carry/Animator)
 ├── Products/    # ProductData (SO), каталог IProductCatalog/ProductCatalog
 ├── Shelves/     # ShelfData (SO), учёт запасов IStockService/StockService
 ├── Customers/   # Модель заказа, ICustomerService/CustomerService
@@ -82,6 +83,12 @@ Assets/Scripts/
 - `PlayerMovement` — движение по готовому нормализованному вектору (XZ); **не читает
   никакой input** (нет `Input.GetAxis`/`Keyboard`/`Touch`/`Joystick`).
 - `PlayerConfig` — настройки движения/вместимости.
+
+> **Вью-слой на prefab** (MonoBehaviour) см. в `Documentation/PREFAB_PLAYER.md`:
+> `ShelfRush.Player.View.PlayerController` (оркестратор) + `PlayerMovement`,
+> `PlayerInteraction`, `PlayerCarry`, `PlayerAnimator`, `IInteractable`. Они получают
+> зависимости через `ServiceBridge` → `GameBootstrap.Instance.Services` и используют
+> только `IPlayerInput` (без чтения используемых устройств).
 
 ### 3.4 Products
 - `ProductData` — ScriptableObject товара (id, имя, спрайт, prefab, цена).
@@ -283,6 +290,12 @@ view-компоненты (без изменения архитектуры):
 - **UI**: компонент-реализация `IHUDView` (Canvas, TMPro), виртуальный джойстик для тача.
 - Будущие реализации уже объявленных интерфейсов (Yandex и т.п.).
 
+> **Уже сделано:** вью-слой игрока как MonoBehaviour на Player prefab
+> (`ShelfRush.Player.View.*` — `PlayerController`, `PlayerMovement`, `PlayerInteraction`,
+> `PlayerCarry`, `PlayerAnimator`). Детали: `Documentation/PREFAB_PLAYER.md`. Это
+> именно view-компоненты: они не содержат игровую сервисную логику, а используют
+> существующие сервисы (`IPlayerInput`, `PlayerConfig`) через `ServiceBridge`.
+
 ---
 
 ## 10. Анти-паттерны (запрещено)
@@ -303,6 +316,9 @@ view-компоненты (без изменения архитектуры):
 - `Input` (единый ввод + провайдеры),
 - `Player`, `Products`, `Shelves`, `Customers`, `Economy`, `Levels`,
 - `Save` (PlayerPrefs), `Platform` (база), `UI` (трансляция), `Pooling` (LeanPool).
+- **Player prefab вью** (`Player/View/*`): MonoBehaviour `PlayerController`, `PlayerMovement`,
+  `PlayerInteraction`, `PlayerCarry`, `PlayerAnimator`, `IInteractable` (см.
+  `Documentation/PREFAB_PLAYER.md`); расширен `PlayerConfig`.
 
 Запланировано (без изменения архитектуры):
 - asmdef-изоляция игрового кода (по рекомендациям аудита);

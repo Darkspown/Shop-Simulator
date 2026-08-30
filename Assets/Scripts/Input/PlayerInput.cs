@@ -30,6 +30,12 @@ namespace ShelfRush.Input
 
         public Vector3 MoveWorld => new Vector3(_smoothed.x, 0f, _smoothed.y);
 
+        /// <summary>Сырое (ДО smoothing) значение: обнуляется сразу при отпускании.</summary>
+        public Vector2 MoveTarget => _target;
+
+        /// <summary>Сырое значение, разложенное на XZ (y = 0).</summary>
+        public Vector3 MoveTargetWorld => new Vector3(_target.x, 0f, _target.y);
+
         /// <summary>Подключить виртуальный джойстик (mobile UI). Необязательно.</summary>
         public void AttachJoystick(IVirtualJoystick joystick)
         {

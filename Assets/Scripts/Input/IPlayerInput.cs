@@ -29,6 +29,17 @@ namespace ShelfRush.Input
         Vector3 MoveWorld { get; }
 
         /// <summary>
+        /// «Сырое» (ДО input smoothing) нормализованное значение движения [−1..1]:
+        /// dead zone → sensitivity, но без сглаживания. Обнуляется в тот же кадр, когда
+        /// тап/клавиша отпущены. Используется, чтобы мгновенно останавливать игрока
+        /// при отпускании (см. PlayerConfig.instantStop), пока Move ещё затухает от smoothing.
+        /// </summary>
+        Vector2 MoveTarget { get; }
+
+        /// <summary>Тот же <see cref="MoveTarget"/>, разложенный на плоскость XZ (y = 0).</summary>
+        Vector3 MoveTargetWorld { get; }
+
+        /// <summary>
         /// Событие «взаимодействие» (взять/положить товар). Транслируется от активного
         /// источника: клавиатура (E/Enter), тап на таче, кнопка виртуального джойстика.
         /// </summary>

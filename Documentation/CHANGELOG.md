@@ -37,3 +37,46 @@
 
 ### Документация
 - Добавлены `Documentation/CROSS_PLATFORM.md`, `Documentation/PLAYER.md`, `CHANGELOG.md`.
+
+---
+
+## Player Controller на prefab (MonoBehaviour вью)
+
+### Added — вью-слой игрока (Assets/Scripts/Player/View/)
+- **`PlayerController`** (`View/PlayerController.cs`) — MonoBehaviour-оркестратор на корне
+  Player prefab. НЕ содержит всю логику: получает ввод через `IPlayerInput` (`MoveWorld` +
+  событие `Interact`), делегирует движение/взаимодействие/анимации в под-компоненты.
+- **`PlayerMovement`** (`View/PlayerMovement.cs`) — движение: скорость, ускорение,
+  замедление, поворот модели к направлению, остановка. Чистая математика, без DOTween,
+  без чтения input.
+- **`PlayerInteraction`** (`View/PlayerInteraction.cs`) — поиск ближайшего `IInteractable`
+  в радиусе (`Physics.OverlapSphere`), состояние взаимодействия (`InteractionState`),
+  обработка `IPlayerInput.Interact`.
+- **`PlayerCarry`** (`View/PlayerCarry.cs`) — инвентарь: count/capacity/add/remove/clear +
+  DOTween-визуализация стекировки товаров в `carryAnchor`.
+- **`PlayerAnimator`** (`View/PlayerAnimator.cs`) — состояния idle/walk/carry/interact
+  (bool-параметры Animator + DOTween-эффекты пульса/покачивания).
+- **`PlayerCamera`** (`View/PlayerCamera.cs`) — следящая камера: плавно ведёт `Main Camera`
+  (или назначенную) за игроком по XZ в `LateUpdate` (offsets/followSmooth/lockY в инспекторе,
+  без DOTween).
+- **`IInteractable` / `InteractableComponent`** (`View/IInteractable.cs`) — контракт
+  интерактивных объектов сцены (полки/клиенты).
+- **`ServiceBridge`** (`View/ServiceBridge.cs`) — доступ prefab-вью к сервисам через
+  `GameBootstrap.Instance.Services`.
+
+### Added — PlayerConfig расширен
+- `PlayerConfig` (`Player/PlayerConfig.cs`) теперь содержит: `moveSpeed`, `acceleration`,
+  `deceleration`, `rotationSpeed`, `interactionRadius`, `pickupDuration`,
+  `placementDuration`, `carryCapacity` (+ legacy `pickupRadius`). Ничего не hardcoded.
+
+### Changed
+- **`GameBootstrap`** — добавлены публичные `Instance` и `Services` для вью-слоя
+  (plain C# `PlayerController` сервис не тронут, сцена не изменена).
+
+### DOTween
+- Используется ТОЛЬКО для визуальных эффектов (`PlayerAnimator`, `PlayerCarry`),
+  а НЕ как контроллер движения/физики (`PlayerMovement` — чистая математика).
+
+### Документация
+- Добавлен `Documentation/PREFAB_PLAYER.md` — компоненты prefab, ссылки, параметры
+  конфига, проверка PC/Mobile.

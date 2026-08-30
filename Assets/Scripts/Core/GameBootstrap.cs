@@ -25,6 +25,12 @@ namespace ShelfRush.Core
     /// </summary>
     public sealed class GameBootstrap : MonoBehaviour
     {
+        /// <summary>Публичный доступ к единственному Bootstrap для вью-компонентов (резолв сервисов).</summary>
+        public static GameBootstrap Instance { get; private set; }
+
+        /// <summary>Доступ к реестру сервисов для prefab-вью (см. Player/View/ServiceBridge).</summary>
+        public ServiceLocator Services => _services;
+
         [Header("DATA (ScriptableObjects)")]
         [SerializeField] private EconomyConfig economyConfig;
         [SerializeField] private PlayerConfig playerConfig;
@@ -43,6 +49,7 @@ namespace ShelfRush.Core
 
         private void Awake()
         {
+            Instance = this;
             Build();
         }
 
@@ -55,6 +62,7 @@ namespace ShelfRush.Core
 
         private void OnDestroy()
         {
+            if (ReferenceEquals(Instance, this)) Instance = null;
             for (var i = _initialized.Count - 1; i >= 0; i--) _initialized[i].Dispose();
             _services?.Clear();
         }
@@ -63,6 +71,7 @@ namespace ShelfRush.Core
 
         private void Build()
         {
+            Instance = this;
             _services = new ServiceLocator();
             _eventBus = new EventBus();
             _initialized.Clear();

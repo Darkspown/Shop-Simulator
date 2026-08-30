@@ -3,6 +3,9 @@
 > Дата: 28.08.2026 | Автор: Cline.
 > Описывает модуль Player: `IPlayerController`, `PlayerController`, `PlayerMovement`,
 > `PlayerConfig` — и как они связаны с единым вводом.
+>
+> **См. также:** `Documentation/PREFAB_PLAYER.md` — MonoBehaviour-вью на Player prefab
+> (`PlayerController`, `PlayerMovement`, `PlayerInteraction`, `PlayerCarry`, `PlayerAnimator`).
 
 ---
 
