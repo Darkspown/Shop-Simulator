@@ -24,6 +24,17 @@ namespace ShelfRush.Products
 
         public IReadOnlyList<ProductData> All => _all;
 
+        public IReadOnlyList<ProductData> GetByCategory(ProductCategory category)
+        {
+            var result = new List<ProductData>();
+            if (category == null) return result;
+            for (var i = 0; i < _all.Count; i++)
+            {
+                if (ReferenceEquals(_all[i].Category, category)) result.Add(_all[i]);
+            }
+            return result;
+        }
+
         public void Initialize(ServiceLocator services) { }
 
         public void Dispose() => _all.Clear();

@@ -5,6 +5,22 @@
 
 ## [Unreleased]
 
+### Added — data-driven Product System (Задача 05)
+- **`ProductCategory`** (`Products/ProductCategory.cs`) — type-safe категория товара как
+  `ScriptableObject` (ссылка, не строка); `displayName` + `color` для UI.
+- **`ProductData`** (`Products/ProductData.cs`) — расширен до полного набора данных:
+  `category`, `boxPrefab`, `rewardValue`, `visualSettings` (вложенный `VisualSettings`);
+  убран неиспользуемый `basePrice`.
+- **`Product`** (`Products/Product.cs`) — runtime-экземпляр: ссылка на `ProductData`,
+  `ResetState()` перед возвратом в пул.
+- **`ProductVisual`** (`Products/ProductVisual.cs`) — вью визуала: масштаб/тон через
+  `MaterialPropertyBlock`; подсветка `SetTint`/`ResetTint`.
+- **`ProductSpawner`** (`Products/ProductSpawner.cs`) — спавн/деспавн через `IPoolService`
+  (LeanPool) с fallback на `Instantiate`/`Destroy`; `Spawn`, `SpawnBox`, `Despawn`.
+- **`IProductCatalog`/`ProductCatalog`** — метод `GetByCategory(ProductCategory)`
+  (фильтрация товаров по категории).
+- Документация: `Documentation/PRODUCTS.md` (создание категории, префаба, товара, reward).
+
 ### Added — единая кросс-платформенная система ввода
 - **`IPlayerInput`** (`Input/IPlayerInput.cs`) — абстракция «gameplay-facing» ввода:
   нормализованный `Move` (Vector2), `MoveWorld` (Vector3 XZ), событие `Interact`,

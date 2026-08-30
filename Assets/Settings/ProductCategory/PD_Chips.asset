@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2d7449a3d485b1843918e038c12f513a, type: 3}
+  m_Name: PD_Chips
+  m_EditorClassIdentifier: Assembly-CSharp::ShelfRush.Products.ProductData
+  id: 794b92c8359e4168b21a3eb70e60476c
+  displayName: PD_Chips
+  category: {fileID: 11400000, guid: 2cd26bd8a55d6474a9b1d989d724a639, type: 2}
+  icon: {fileID: 10911, guid: 0000000000000000f000000000000000, type: 0}
+  prefab: {fileID: 2479348123541678765, guid: 96277e3de17fa914597860c6cf86d742, type: 3}
+  boxPrefab: {fileID: 2479348123541678765, guid: 96277e3de17fa914597860c6cf86d742, type: 3}
+  rewardValue: 12
+  visualSettings:
+    Scale: {x: 1, y: 1, z: 1}
+    Tint: {r: 1, g: 1, b: 1, a: 1}
+    StackOffset: {x: 0, y: 0.12, z: 0}
+    ShelfOffset: {x: 0, y: 0, z: 0}

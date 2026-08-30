@@ -7,6 +7,9 @@ namespace ShelfRush.Products
     {
         IReadOnlyList<ProductData> All { get; }
 
+        /// <summary>Товары заданной категории (type-safe, по ссылке).</summary>
+        IReadOnlyList<ProductData> GetByCategory(ProductCategory category);
+
         /// <summary>Получить товар по объекту (быстро, через сравнение ссылок).</summary>
         bool TryFind(ProductData product, out ProductData found);
 

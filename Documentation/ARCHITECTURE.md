@@ -91,8 +91,13 @@ Assets/Scripts/
 > только `IPlayerInput` (без чтения используемых устройств).
 
 ### 3.4 Products
-- `ProductData` — ScriptableObject товара (id, имя, спрайт, prefab, цена).
-- `IProductCatalog` / `ProductCatalog` — каталог всех товаров (строится на бустрапе).
+- `ProductCategory` — type-safe категория товара (ScriptableObject-ассет, ссылка, не строка).
+- `ProductData` — ScriptableObject товара (id, имя, category, спрайт, prefab/boxPrefab,
+  rewardValue, visualSettings).
+- `Product` / `ProductVisual` / `ProductSpawner` — runtime-экземпляр, визуал и спавнер
+  (через `IPoolService`/LeanPool). Детали: `Documentation/PRODUCTS.md`.
+- `IProductCatalog` / `ProductCatalog` — каталог всех товаров (строится на бустрапе),
+  включая `GetByCategory`.
 
 ### 3.5 Shelves
 - `ShelfData` — ScriptableObject полки (товар, вместимость, точки размещения).

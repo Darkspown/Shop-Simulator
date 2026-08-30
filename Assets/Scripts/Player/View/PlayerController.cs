@@ -123,6 +123,14 @@ namespace ShelfRush.Player.View
                 movement.DoMove(Vector3.zero, deltaTime);
             }
 
+            // Ленивый поиск аниматора: подхватываем, даже если модель была
+            // неактивна при Awake и появилась позже.
+            if (playerAnimator == null)
+            {
+                var comps = GetComponentsInChildren<PlayerAnimator>(true);
+                playerAnimator = comps != null && comps.Length > 0 ? comps[0] : null;
+            }
+
             if (playerAnimator != null)
             {
                 playerAnimator.SetCarrying(carry != null && carry.Count > 0);

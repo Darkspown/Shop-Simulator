@@ -50,7 +50,8 @@ namespace ShelfRush.Customers
         {
             if (product == null || count <= 0) return null;
 
-            var reward = product.BasePrice * count;
+            // Награда за единицу товара — из ProductData.RewardValue.
+            var reward = product.RewardValue * count;
             var order = new CustomerOrder(
                 "order_" + (_nextOrderId++),
                 product,

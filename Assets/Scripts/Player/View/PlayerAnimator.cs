@@ -32,6 +32,7 @@ namespace ShelfRush.Player.View
         [Tooltip("Длительность одного полупериода покачивания (сек).")]
         [SerializeField] private float bobDuration = 0.4f;
 
+        private bool _warnedNoAnimator;
         private Vector3 _baseScale;
         private float _bobBaseY;
         private Tween _bobTween;
@@ -47,9 +48,9 @@ namespace ShelfRush.Player.View
         private void Awake()
         {
             DOTween.Init();
-            if (animator == null) animator = GetComponentInChildren<Animator>();
             _baseScale = transform.localScale;
             if (bobTarget != null) _bobBaseY = bobTarget.localPosition.y;
+            // Animator ищется лениво в Apply/SetWalking — см. метод EnsureAnimator.
         }
 
         private void OnDisable()
@@ -68,6 +69,7 @@ namespace ShelfRush.Player.View
         /// <summary>Переключить состояние ходьбы.</summary>
         public void SetWalking(bool walking)
         {
+            // Ранняя проверка: если состояние уже такое — пропускаем (без лишних SetBool).
             if (_walking == walking) return;
             _walking = walking;
             Apply();
@@ -94,11 +96,37 @@ namespace ShelfRush.Player.View
 
         private void Apply()
         {
-            if (animator == null) return;
-            animator.SetBool("Idle", !_walking);
-            animator.SetBool("Walk", _walking);
-            animator.SetBool("Carry", _carrying);
-            animator.SetBool("Interact", _interacting);
+            var anim = EnsureAnimator();
+            if (anim == null) return;
+
+            anim.SetBool("Idle", !_walking);
+            anim.SetBool("Walk", _walking);
+            anim.SetBool("Carry", _carrying);
+            anim.SetBool("Interact", _interacting);
+        }
+
+        /// <summary>
+        /// Гарантированно находит Animator (назначенный в инспекторе или в детях),
+        /// повторно ища его каждый вызов, если он ещё не был найден. Позволяет анимации
+        /// заработать даже если модель/Animator появляется позже Awake (например, объект
+        /// был неактивен при старте) или добавлен на лету.
+        /// </summary>
+        private Animator EnsureAnimator()
+        {
+            if (animator != null) return animator;
+            animator = GetComponentInChildren<Animator>(true); // true = включая неактивные
+
+            if (animator == null && !_warnedNoAnimator)
+            {
+                _warnedNoAnimator = true;
+                Debug.LogWarning(
+                    "[PlayerAnimator] Animator не найден на объекте или в детях. " +
+                    "Убедитесь, что на модели персонажа есть компонент Animator с параметрами " +
+                    "Idle/Walk/Carry/Interact (см. Documentation/PREFAB_PLAYER.md). " +
+                    "Без Animator анимации бега/idle не проигрываются (работают только DOTween-эффекты).",
+                    this);
+            }
+            return animator;
         }
 
         private void StartBob()
