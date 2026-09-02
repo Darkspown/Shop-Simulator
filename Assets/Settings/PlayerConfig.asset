@@ -18,6 +18,7 @@ MonoBehaviour:
   instantStop: 1
   rotationSpeed: 540
   interactionRadius: 2
+  autoPickup: 1
   pickupDuration: 0.35
   placementDuration: 0.35
   carryCapacity: 4

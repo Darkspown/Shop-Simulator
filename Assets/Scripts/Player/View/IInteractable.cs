@@ -23,6 +23,12 @@ namespace ShelfRush.Player.View
         /// </summary>
         bool CanInteract(PlayerController player);
 
+        /// <summary>
+        /// Авто-взаимодействие при приближении (подбор без нажатия кнопки/тапа).
+        /// Истина для «коробок»/полок с товаром; доставка обычно false (по кнопке).
+        /// </summary>
+        bool AutoInteractOnApproach { get; }
+
         /// <summary>Выполнить взаимодействие (дергает player.Carry / player-эффекты).</summary>
         void Interact(PlayerController player);
     }
@@ -41,6 +47,9 @@ namespace ShelfRush.Player.View
         public string Prompt => prompt;
 
         public abstract bool CanInteract(PlayerController player);
+
+        /// <summary>Авто-подбор при приближении (по умолчанию выключен).</summary>
+        public virtual bool AutoInteractOnApproach => false;
 
         public abstract void Interact(PlayerController player);
     }

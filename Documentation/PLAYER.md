@@ -83,11 +83,65 @@ GameStateMachine → Platform → Save → Pool → Catalog → InputService
 | Поле | По умолчанию | Описание |
 |---|---|---|
 | `moveSpeed` | `4` | Скорость движения, units/сек |
-| `carryCapacity` | `4` | Макс. число товаров в руках |
-| `pickupRadius` | `1.2` | Радиус подбора товара |
+| `interactionRadius` | `2` | Радиус поиска интерактивных объектов |
+| `autoPickup` | `true` | Авто-подбор товара при приближении (без нажатия кнопки/тапа) |
+| `carryCapacity` | `4` | Макс. число товаров в руках (фолбэк, см. ниже) |
+| `pickupRadius` | `1.2` | Радиус подбора товара (legacy, plain C# сервис) |
 
 Если конфиг не назначен, используются встроенные дефолты (`MoveSpeed = 4`,
 `CarryCapacity = 4`).
+
+> Примечание про переноску: `CarryCapacity` в `PlayerConfig` используется как **фолбэк**.
+> Во время уровня вместимость берётся из `LevelConfig.CarryCapacity` (см. §6.1).
+
+## 6.1 Подбор и переноска (Pickup & Carry)
+
+Геймплей-поток переноски покрыт компонентом `View/PlayerCarry.cs`:
+
+```
+Approach → Detect → Pickup → Add To Carry → Carry → Deliver → Remove From Carry
+```
+
+- **Approach / Detect**: `PlayerInteraction` находит в радиусе (`PlayerConfig.InteractionRadius`)
+  ближайший `IInteractable` И коробки-товары (`Product`) на сцене.
+- **Pickup → Add To Carry**:
+  - **Коробки (`Product`)** — подбираются автоматически при подходе, без нажатий:
+    игрок берёт `product.Data` в руки, коробка возвращается в пул (`ResetState → Despawn`).
+  - **Интерактивы** — если цель имеет `AutoInteractOnApproach == true` и включён
+    `PlayerConfig.autoPickup`, подбор тоже происходит без кнопок/тапов (по одному товару,
+    лок на `PickupDuration`). Интерактив вызывает `player.Carry.TryAdd(productData)`.
+  - Компонент проверяет capacity (`CanAdd`/`IsFull`) и спавнит визуал коробки
+    (`ProductData.BoxPrefab`) через `IPoolService` (LeanPool), укладывая в стопку на `carryAnchor`.
+  - Коробки, уже лежащие в руках (дети `carryAnchor`), повторно не подбираются.
+- **Carry**: товары стекируются по `stackOffset`; доступны `Count`, `IsFull`, `IsEmpty`,
+  `CanAdd`, `CanRemove` и список `Items`. Поддержаны несколько товаров одновременно.
+- **Deliver → Remove From Carry**: доставка клиенту — `TryRemove(out product)`
+  (снимает верхний) или `TryDrop(productData)` (снимает конкретный). Визуал убирается
+  DOTween-shrink и возвращается в пул; стопка уплотняется (`CompactStack`).
+- **Clear()**: мгновенно возвращает все визуалы в пул (например, при смене уровня).
+
+Правила:
+- **DOTween** используется только для визуального перемещения/укладки (не движение/физика).
+- **LeanPool** (`IPoolService`) — для переиспользования объектов товара (не Instantiate/Destroy).
+- **Despawn-контракт** перед возвратом в пул (`ReleaseVisual`):
+  kill tweens → reset state → clear product data → reset transform → unsubscribe events.
+- При старте нового уровня (`LevelStartedEvent`) `PlayerCarry` очищает руки и отписывается/переподписывается корректно.
+
+> Полная пошаговая настройка (префаб Player, коробка в руках, интерактив «взять/доставить»,
+> прогрессия, GameBootstrap, чек-лист) — в `Documentation/CARRY_SETUP.md`.
+
+### Прогрессия вместимости (capacity)
+
+**Прогрессия НЕ хранится в PlayerCarry.** Единый источник — данные уровня:
+`LevelConfig.CarryCapacity`. `PlayerCarry.Capacity` и `PlayerController.CarryCapacity`
+(plain C# сервис) читают текущий уровень через `ILevelManager.Current`; если уровень не
+активен — фолбэк на `PlayerConfig.CarryCapacity`.
+
+Рекомендуемые значения по уровням (проставляются на ассетах `LevelConfig`):
+
+| Уровень | 1 | 2 | 3 | 4 | 5 |
+|---|---|---|---|---|---|
+| Capacity | 1 | 2 | 3 | 5 | 7 |
 
 ## 7. Контракт IPlayerController
 

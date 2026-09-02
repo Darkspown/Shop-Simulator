@@ -1,5 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
+using ShelfRush.Pooling;
+using ShelfRush.Products;
 using UnityEngine;
 
 namespace ShelfRush.Player.View
@@ -40,6 +42,7 @@ namespace ShelfRush.Player.View
         private Coroutine _searchRoutine;
         private Coroutine _interactionRoutine;
         private readonly List<Collider> _buffer = new List<Collider>();
+        private IPoolService _pool;
 
         /// <summary>Текущий (ближайший доступный) интерактив, либо null.</summary>
         public IInteractable Current => _current;
@@ -55,6 +58,9 @@ namespace ShelfRush.Player.View
 
         /// <summary>Радиус поиска из конфига.</summary>
         public float InteractionRadius => config != null ? config.InteractionRadius : 2f;
+
+        /// <summary>Включён ли авто-подбор при приближении (без нажатия кнопки).</summary>
+        public bool AutoPickupEnabled => config != null && config.AutoPickup;
 
         private void Awake()
         {
@@ -79,7 +85,12 @@ namespace ShelfRush.Player.View
         {
             while (true)
             {
-                if (_state == InteractionState.Idle) SearchForTarget();
+                if (_state == InteractionState.Idle)
+                {
+                    SearchForTarget();
+                    TryAutoInteract();
+                    TryAutoCollectProduct();
+                }
                 yield return new WaitForSeconds(searchInterval);
             }
         }
@@ -114,6 +125,105 @@ namespace ShelfRush.Player.View
             }
 
             _current = best;
+        }
+
+        /// <summary>
+        /// Авто-подбор: товар берётся сам при приближении к цели с
+        /// <see cref="IInteractable.AutoInteractOnApproach"/> — без нажатий кнопок/тапов.
+        /// Проверяет capacity (CanInteract), близость и уважает лок взаимодействия.
+        /// </summary>
+        private void TryAutoInteract()
+        {
+            if (!AutoPickupEnabled) return;
+            if (_current == null || _state != InteractionState.Idle) return;
+            if (!_current.CanInteract(_controller)) return;
+            if (!_current.AutoInteractOnApproach) return;
+            if (!IsCloseEnough(_current)) return;
+
+            _interactionRoutine = StartCoroutine(DoInteraction(_current));
+        }
+
+        /// <summary>Достаточно ли близко игрок к цели (уже в радиусе взаимодействия).</summary>
+        private bool IsCloseEnough(IInteractable target)
+        {
+            if (target == null || _controller == null) return true;
+            var radius = InteractionRadius;
+            return (target.Position - transform.position).sqrMagnitude <= radius * radius;
+        }
+
+        /// <summary>
+        /// Авто-подбор коробок (runtime <see cref="Product"/>) при подходе: товар берётся
+        /// в руки без нажатий, коробка возвращается в пул (ResetState → Despawn).
+        /// Коробки, уже лежащие в руках (дети carryAnchor), исключаются.
+        /// </summary>
+        private void TryAutoCollectProduct()
+        {
+            if (!AutoPickupEnabled) return;
+            if (_controller == null || _state != InteractionState.Idle) return;
+
+            var carry = _controller.Carry;
+            if (carry == null || !carry.CanAdd()) return;
+
+            var product = FindCollectibleProduct(carry);
+            if (product == null) return;
+
+            if (carry.TryAdd(product.Data))
+            {
+                DespawnProduct(product);
+            }
+        }
+
+        /// <summary>Ближайшая коробка-товар (Product с данными) в радиусе, не в руках.</summary>
+        private Product FindCollectibleProduct(PlayerCarry carry)
+        {
+            // Ленивый резолв конфига: бутстрап мог регистрировать PlayerConfig позже Awake.
+            if (config == null) ServiceBridge.TryResolve(out config);
+            if (config == null) return null;
+
+            var origin = transform.position + Vector3.up * 0.5f;
+            _buffer.Clear();
+            _buffer.AddRange(Physics.OverlapSphere(origin, config.InteractionRadius, interactableMask, QueryTriggerInteraction.Collide));
+
+            Product best = null;
+            var bestSqr = float.MaxValue;
+            var anchor = carry != null ? carry.CarryAnchor : null;
+
+            for (var i = 0; i < _buffer.Count; i++)
+            {
+                var col = _buffer[i];
+
+                // Коробки в руках (дети якоря) не подбираем повторно.
+                if (anchor != null && col.transform.IsChildOf(anchor)) continue;
+
+                var product = col.GetComponent<Product>();
+                if (product == null || product.Data == null) continue;
+
+                var sqr = (col.transform.position - transform.position).sqrMagnitude;
+                if (sqr < bestSqr)
+                {
+                    bestSqr = sqr;
+                    best = product;
+                }
+            }
+            return best;
+        }
+
+        /// <summary>Вернуть коробку в пул по despawn-контракту (ResetState → Despawn).</summary>
+        private void DespawnProduct(Product product)
+        {
+            if (product == null) return;
+            var go = product.gameObject;
+            product.ResetState(); // отвязка данных + сброс визуала
+            var pool = ResolvePool();
+            if (pool != null) pool.Despawn(go);
+            else Destroy(go);
+        }
+
+        private IPoolService ResolvePool()
+        {
+            if (_pool != null) return _pool;
+            ServiceBridge.TryResolve(out _pool);
+            return _pool;
         }
 
         /// <summary>

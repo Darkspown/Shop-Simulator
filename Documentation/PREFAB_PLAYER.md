@@ -70,6 +70,7 @@ Player (корень)
 | `instantStop` | bool | true | Мгновенная остановка при отпускании тапа/кнопки — без инерции/проскальзывания |
 | `rotationSpeed` | float | 540 | Скорость поворота модели, град/сек |
 | `interactionRadius` | float | 2 | Радиус поиска интерактивных объектов |
+| `autoPickup` | bool | true | Авто-подбор при приближении (без нажатия кнопки/тапа) |
 | `pickupDuration` | float | 0.35 | Длительность анимации «взять в руки» + лок |
 | `placementDuration` | float | 0.35 | Длительность анимации «положить» |
 | `carryCapacity` | int | 4 | Максимальное число товаров в руках |
@@ -95,8 +96,10 @@ Player (корень)
   - `searchInterval` → 0.1 c.
 - **`PlayerCarry`** (MonoBehaviour):
   - `Config` → `PlayerConfig` (опц.).
-  - `carryItemPrefab` → префаб «коробки» товара (опц., для визуальной стекировки).
   - `carryAnchor` → child-объект (руки/спина) для стекировки.
+  - `stackOffset` → смещение между товарами в стопке.
+  - Визуал «коробки» берётся из `ProductData.BoxPrefab` и спавнится через LeanPool (`IPoolService`).
+  - Пошаговая настройка: `Documentation/CARRY_SETUP.md`.
 - **`PlayerAnimator`** (MonoBehaviour):
   - `animator` → опц. Unity `Animator` (bools `Idle/Walk/Carry/Interact`).
   - `interactPulse`, `bobTarget`, `bobAmplitude`, `bobDuration` → DOTween-эффекты.
@@ -124,8 +127,8 @@ Player (корень)
 | `PlayerInteraction` | `Config` | `PlayerConfig` |
 | `PlayerInteraction` | `interactableMask` | LayerMask полок/клиентов |
 | `PlayerCarry` | `Config` | `PlayerConfig` |
-| `PlayerCarry` | `carryItemPrefab` | (опц.) префаб «коробки» |
 | `PlayerCarry` | `carryAnchor` | (опц.) child для стекировки |
+| `PlayerCarry` | `stackOffset` | смещение между товарами в стопке |
 | `PlayerAnimator` | `animator` | (опц.) `Animator` модели |
 | `PlayerAnimator` | `bobTarget` | (опц.) child для покачивания |
 | `PlayerController` | все | (опц.) можно оставить пустыми — авто-резолв в `Awake` |
@@ -193,7 +196,11 @@ Player (корень)
 ```csharp
 public sealed class DebugShelfInteractable : InteractableComponent
 {
-    public override bool CanInteract(PlayerController player) => !player.Carry.IsFull;
+    public override bool CanInteract(PlayerController player) => player.Carry.CanAdd();
+
+    // Авто-подбор: товар берётся сам при приближении, без кнопки/тапа.
+    public override bool AutoInteractOnApproach => true;
+
     public override void Interact(PlayerController player)
     {
         // Пример: взять ProductData и положить в руки:
@@ -215,11 +222,13 @@ public sealed class DebugShelfInteractable : InteractableComponent
 4. **Проверка анимации**: при движении переключается `Walk`; при `carry.Count > 0` — `Carry`;
    при взаимодействии — `Interact` (и DOTween-пульс).
 5. **Проверка взаимодействия** (без сцены): поставьте рядом тестовый объект с
-   `InteractableComponent` (и Collider); подойдите в радиус `interactionRadius` и нажмите
-   **E / Enter** — вызовется `Interact`, товар добавится в `PlayerCarry` (Count растёт;
-   при назначенном `carryItemPrefab` появится «коробка» с DOTween-эффектом).
+   `InteractableComponent` (`AutoInteractOnApproach = true`, и Collider); просто
+   **подойдите в радиус** `interactionRadius` — товар берётся автоматически (без нажатий)
+   и добавляется в `PlayerCarry` (Count растёт; при заполненном `ProductData.BoxPrefab`
+   появится «коробка» с DOTween-эффектом из пула).
 6. **Вместимость**: заполните руки `carryCapacity` раз — следующие «взять» игнорируются
-   (`IsFull`); `TryRemove` (положить) убавляет по одному, `Clear()` — мгновенно.
+   (`IsFull`, авто-подбор останавливается); `TryRemove` (положить) убавляет по одному,
+   `Clear()` — мгновенно.
 7. Измените `acceleration` / `deceleration` / `moveSpeed` в `PlayerConfig` — отклик движения
    меняется без правок логики.
 

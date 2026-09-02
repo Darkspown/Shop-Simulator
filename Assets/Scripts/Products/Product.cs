@@ -14,6 +14,11 @@ namespace ShelfRush.Products
     [DisallowMultipleComponent]
     public sealed class Product : MonoBehaviour
     {
+        [Tooltip("Начальные данные товара. Для объектов, размещённых вручную на сцене " +
+                 "(без ProductSpawner), задаётся в инспекторе и применяется в Awake. " +
+                 "При спавне через пул ProductSpawner переопределяет через Setup. Может быть пустым.")]
+        [SerializeField] private ProductData initialData;
+
         private ProductVisual _visual;
 
         /// <summary>Данные товара (ScriptableObject). Может быть null, пока не вызван Setup.</summary>
@@ -35,6 +40,14 @@ namespace ShelfRush.Products
             Data = data;
             if (Data != null) gameObject.name = $"{Data.name} (Product)";
             ApplyVisual();
+        }
+
+        private void Awake()
+        {
+            // Для объектов, размещённых вручную на сцене (без ProductSpawner):
+            // автоподготовка данных, заданных в инспекторе. При пулинге спавнер
+            // вызовет Setup(нужныйData) и переопределит — пул не ломается.
+            if (Data == null && initialData != null) Setup(initialData);
         }
 
         /// <summary>

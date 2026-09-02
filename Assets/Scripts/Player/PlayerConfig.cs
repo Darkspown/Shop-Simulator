@@ -30,6 +30,9 @@ namespace ShelfRush.Player
         [Tooltip("Радиус поиска ближайшего интерактивного объекта, units.")]
         [SerializeField] private float interactionRadius = 2f;
 
+        [Tooltip("Авто-подбор: товар берётся сам при приближении к коробке/полке, без нажатия кнопки/тапа.")]
+        [SerializeField] private bool autoPickup = true;
+
         [Tooltip("Длительность анимации «взять товар в руки», сек (DOTween-эффект и лок взаимодействия).")]
         [SerializeField] private float pickupDuration = 0.35f;
 
@@ -57,6 +60,9 @@ namespace ShelfRush.Player
         public float RotationSpeed => Mathf.Max(0f, rotationSpeed);
 
         public float InteractionRadius => Mathf.Max(0f, interactionRadius);
+
+        /// <summary>Авто-подбор товара при приближении (без нажатия кнопки/тапа).</summary>
+        public bool AutoPickup => autoPickup;
 
         public float PickupDuration => Mathf.Max(0f, pickupDuration);
 

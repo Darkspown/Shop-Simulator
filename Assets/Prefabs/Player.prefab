@@ -82,10 +82,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ddafe135ee9733247893615a9826d17f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ShelfRush.Player.View.PlayerController
-  movement: {fileID: 0}
-  interaction: {fileID: 0}
-  carry: {fileID: 0}
-  playerAnimator: {fileID: 0}
+  movement: {fileID: 1963296882653645746}
+  interaction: {fileID: 6274440121635790151}
+  carry: {fileID: 8733214737858003852}
+  playerAnimator: {fileID: 9079284962250098899}
 --- !u!114 &8733214737858003852
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -99,8 +99,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ShelfRush.Player.View.PlayerCarry
   config: {fileID: 11400000, guid: 5baa7c8d305e8494caf44902e547d25d, type: 2}
-  carryItemPrefab: {fileID: 0}
-  carryAnchor: {fileID: 5071806501232560461}
+  carryAnchor: {fileID: 2355000643391044105}
+  stackOffset: {x: 0, y: 0.12, z: 0}
 --- !u!114 &9079284962250098899
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -165,7 +165,7 @@ Transform:
   m_GameObject: {fileID: 7033946847475694170}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0, y: 1.32, z: 0.137}
+  m_LocalPosition: {x: 0, y: 1.32, z: 0.79}
   m_LocalScale: {x: 0.34239, y: 0.34239, z: 0.34239}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -308,11 +308,6 @@ PrefabInstance:
 --- !u!95 &3263449476670986237 stripped
 Animator:
   m_CorrespondingSourceObject: {fileID: 6378207671594616785, guid: 8fba94173e2a97041a18861de4fdcc9c, type: 3}
-  m_PrefabInstance: {fileID: 8487570161031254060}
-  m_PrefabAsset: {fileID: 0}
---- !u!4 &5071806501232560461 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: 3723145604663269729, guid: 8fba94173e2a97041a18861de4fdcc9c, type: 3}
   m_PrefabInstance: {fileID: 8487570161031254060}
   m_PrefabAsset: {fileID: 0}
 --- !u!4 &7715151157744185211 stripped

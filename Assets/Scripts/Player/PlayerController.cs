@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using ShelfRush.Core;
 using ShelfRush.Input;
+using ShelfRush.Levels;
 using ShelfRush.Products;
 using ShelfRush.Shelves;
 using UnityEngine;
@@ -23,12 +24,25 @@ namespace ShelfRush.Player
         private PlayerConfig _config;
         private IEventBus _events;
         private PlayerMovement _movement;
+        private ILevelManager _levels;
 
         public Transform View { get; set; }
 
         public IReadOnlyList<ProductData> Carried => _carried;
 
-        public int CarryCapacity => _config != null ? _config.CarryCapacity : 4;
+        /// <summary>
+        /// Вместимость переноски. Источник — текущий уровень (прогрессия не хранится здесь),
+        /// фолбэк — PlayerConfig.
+        /// </summary>
+        public int CarryCapacity
+        {
+            get
+            {
+                var level = _levels?.Current;
+                if (level != null) return level.CarryCapacity;
+                return _config != null ? _config.CarryCapacity : 1;
+            }
+        }
 
         public void Initialize(ServiceLocator services)
         {
@@ -37,6 +51,7 @@ namespace ShelfRush.Player
             _customers = services.Get<Customers.ICustomerService>();
             _events = services.Get<IEventBus>();
             services.TryGet<PlayerConfig>(out _config);
+            services.TryGet<ILevelManager>(out _levels);
             _movement = new PlayerMovement(_config);
         }
 
@@ -49,6 +64,7 @@ namespace ShelfRush.Player
             _events = null;
             _config = null;
             _movement = null;
+            _levels = null;
         }
 
         public void Tick(float deltaTime)

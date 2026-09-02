@@ -37,7 +37,7 @@ ProductData    (SO, статические данные товара)
 |---|---|---|
 | `ProductCategory.cs` | `ProductCategory` (SO) | Type-safe категория (ссылка, не строка); имя+цвет для UI |
 | `ProductData.cs` | `ProductData` (SO) + `VisualSettings` | Статические данные товара (см. §3) |
-| `Product.cs` | `Product` (MonoBehaviour) | Runtime-экземпляр: ссылка на `ProductData`, сброс перед Despawn |
+| `Product.cs` | `Product` (MonoBehaviour) | Runtime-экземпляр: ссылка на `ProductData` (в т.ч. `initialData` для ручных коробок на сцене), сброс перед Despawn |
 | `ProductVisual.cs` | `ProductVisual` (MonoBehaviour) | Визуал: масштаб+тон через `MaterialPropertyBlock` |
 | `ProductSpawner.cs` | `ProductSpawner` (MonoBehaviour) | Спавн/деспавн товаров через `IPoolService` |
 | `IProductCatalog.cs` | `IProductCatalog` | Каталог: `All`, `GetByCategory`, `TryFind`, `TryFindById` |
@@ -201,3 +201,29 @@ public sealed class ProductData : ScriptableObject
 
 Проверка: включить профилировщик, многократно спавн/деспавн товаров — не должно быть
 утечек объектов и роста аллокаций сверх LeanPool.
+
+---
+
+## 8. Переноска товаров через пул (PlayerCarry + LeanPool)
+
+Переносимые игроком товары (`View/PlayerCarry.cs`) тоже спавнятся/возвращаются через
+LeanPool (`IPoolService`), а не через `Instantiate`/`Destroy`:
+
+- **Спавн**: при `TryAdd(productData)` берётся `ProductData.BoxPrefab` из пула,
+  на корне гарантируется компонент `Product`, вызывается `product.Setup(data)` (применяет
+  визуал из ProductData), затем объект вешается на `carryAnchor` и под DOTween-анимацией
+  укладывается в стопку (layout по `stackOffset`).
+- **Возврат в пул**: при доставке/уборке/очистке вызывается тот же despawn-контракт, что и
+  для товара на полке — `ReleaseVisual`:
+  - `kill tweens` (`transform.DOKill()`),
+  - `reset state` + `clear product data` (`Product.ResetState()` отвязывает `Data` и сбрасывает тон),
+  - `reset transform` (`localPosition`/`localRotation`/`localScale` в нейтральные значения),
+  - `unsubscribe events` (у `Product` собственных подписок нет; `PlayerCarry` сам корректно
+    отписывается от шины в `OnDisable`/`UnsubscribeEvents`),
+  - только затем `IPoolService.Despawn(go)`. Без бутстрапа — аккуратный fallback на `Destroy`.
+
+> Требование «перед Despawn: kill tweens, reset state, unsubscribe events, reset transform,
+> clear product data» — едино для `ProductSpawner` (полки) и `PlayerCarry` (руки игрока).
+
+> Пошаговая настройка коробок в руках игрока (boxPrefab, пул, интерактивы) —
+> `Documentation/CARRY_SETUP.md`.

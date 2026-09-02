@@ -16,11 +16,11 @@ MonoBehaviour:
   displayName: Water
   category: {fileID: 11400000, guid: 1701bf4f2825b2944b70a4f62e0aa0dd, type: 2}
   icon: {fileID: 10911, guid: 0000000000000000f000000000000000, type: 0}
-  prefab: {fileID: 4242716553656283256, guid: ab4ddf3ca3a41e149bf106cbd96a0b25, type: 3}
+  prefab: {fileID: 6585967865353209568, guid: 246821ed7ed44bb41ada6b78bef44ebc, type: 3}
   boxPrefab: {fileID: 4242716553656283256, guid: ab4ddf3ca3a41e149bf106cbd96a0b25, type: 3}
   rewardValue: 5
   visualSettings:
     Scale: {x: 1, y: 1, z: 1}
-    Tint: {r: 1, g: 1, b: 1, a: 1}
-    StackOffset: {x: 0, y: 0.12, z: 0}
+    Tint: {r: 0, g: 0.69565344, b: 1, a: 1}
+    StackOffset: {x: 0, y: 0, z: 0}
     ShelfOffset: {x: 0, y: 0, z: 0}
