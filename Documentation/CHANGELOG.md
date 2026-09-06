@@ -5,6 +5,69 @@
 
 ## [Unreleased]
 
+### Fixed — Размещённый товар не был виден на полке
+- **`Shelves/ShelfController.cs`** (`SpawnPlacedVisual`) — раньше при «перелёте» товар спавнился с
+  `localScale = 0` и ждал, пока DOTween-твин поднимет его до `Vector3.one`. Если твин не отрабатывал,
+  товар оставался с масштабом 0 → размещался логически, но был невидим. Теперь товар спавнится сразу
+  с правильным масштабом из `ProductData.VisualSettings.Scale` и на позиции слота; перелёт — только
+  по позиции (от игрока к слоту, `OutCubic`) + лёгкий bounce масштаба. Товар виден во время всего полёта.
+  Документация: `SHELVES_SETUP.md` (§8 troubleshooting).
+
+### Fixed — Зона не выставляла товары на полку (по близости)
+- **`Shelves/ShelfInteractionZone.cs`** (переработан) — раньше полагался на `OnTriggerEnter`, но
+  игрок двигается **transform'ом без Rigidbody**, поэтому триггер физикой не вызывался. Теперь зона
+  **сама периодически проверяет** (`Scan Interval`, по умолчанию 0.1 с), находится ли позиция игрока
+  внутри её `BoxCollider`, и при первом «входе» с товарами вызывает `PlaceAll` → `TryPlaceFlying`.
+  Rigidbody на игроке больше не требуется. Повторная выкладка — после выхода/входа или при наполнении
+  рук внутри зоны. Документация: `SHELVES_SETUP.md` (§9, troubleshooting).
+
+### Added — Ручная настройка слотов полки
+- **`Shelves/ShelfController.cs`** (расширен) — поле `Use Manual Slots` + `BuildManualSlots()`:
+  если включено, использует вручную размещённые в сцене/префабе дочерние объекты с компонентом
+  `ShelfSlot` (позиции из сцены, порядок — по иерархии SiblingIndex), вместо автогенерации из
+  `ShelfData.Slots`/Auto. Добавлены `SlotsRoot`/`UseManualSlots`.
+- **`Shelves/ShelfSlot.cs`** (расширен) — сцена-гизмо точки слота (зелёный свободен / красный занят),
+  чтобы расставлять слоты вручную в редакторе.
+- **`Editor/ShelfControllerEditor.cs`** (новый) — инспектор-кнопки: «+ Добавить слот (child)»
+  (создаёт дочерний ShelfSlot) и «Синхрон. порядок / имена слотов» (`ShelfSlot_0..N` по иерархии).
+- Документация: `SHELVES_SETUP.md` (§4.1 Ручная настройка слотов).
+
+### Added — Interaction Zone + fly-to-shelf (наступил → товар перелетел)
+- **`Shelves/ShelfInteractionZone.cs`** (новый) — зона из объекта **Plane** перед полкой: игрок
+  заходит в неё и товары из рук автоматически размещаются. Использует `MeshCollider` плоскости как
+  Trigger (IsTrigger), размер настраивается масштабом Plane. **Без подсветки.** Поля:
+  `Controller`, `Auto Configure Collider`, `Auto Place On Enter`, `Fly Delay Step`.
+- **`Shelves/ShelfController.cs`** (расширен) — `TryPlaceFlying(product, flyFromWorld, flyDelay)`:
+  товар рисуется у игрока и DOTween-ом (перелёт + `OutBack`-рост) садится в свободный слот;
+  рядом `PlayFlyVisualFeedback` (зелёная подсветка товара без punch полки).
+- Игровое решение принимает `ShelfController` по данным (`Category == AllowedCategory`, есть слот);
+  зона лишь вызывает его и снимает размещённое с `PlayerCarry.TryDrop` (остаток остаётся у игрока).
+- Коллайдеры переносимых коробок (дети `CarryAnchor`) зона игнорирует (без повторного срабатывания).
+- Документация: `SHELVES_SETUP.md` (§9 Interaction Zone), `CHANGELOG.md`.
+
+### Added — Shelf System (Задача 07)
+- **`Shelves/ShelfData.cs`** — расширен для Placement: `AllowedCategory` (type-safe),
+  `Slots` (`Vector3[]` локальных позиций), `InteractionRadius`, `SlotCapacity`
+  (= `min(Capacity, Slots.Length)`); legacy поля `Product`/`Capacity` (Stock) сохранены.
+- **`Shelves/ShelfController.cs`** — ядро: `CanPlace`/`TryPlace`/`TryPlaceRange`,
+  `CurrentAmount`, главная проверка `ProductData.Category == AllowedCategory`,
+  события `OnProductPlaced`/`OnPlacementFailed`/`OnCategoryMismatch`/`OnShelfFull`/
+  `OnShelfCompleted`, feedback (highlight+bounce / негативный «тряс»),
+  создание runtime-слотов из `ShelfData.Slots`, спавн визуала через `ProductSpawner`/LeanPool.
+- **`Shelves/ShelfSlot.cs`** — слот размещения (индекс, смещение, `Contents`, `Visual`,
+  `IsOccupied`/`IsAvailable`); создаётся автоматически, сцена не изменяется.
+- **`Shelves/ShelfInteraction.cs`** — интерактив полки (`IInteractable`): размещает товары
+  из рук игрока, снимая только фактически размещённые; остаток (неверный/не поместился) у игрока.
+- **Неверный товар**: не удаляется/не уничтожается/не размещается/не приносит reward/не
+  увеличивает прогресс; остаётся у игрока.
+- **События** (`Core/GameEvents.cs`): `ShelfProductPlacedEvent`, `ShelfPlacementFailedEvent`,
+  `ShelfCompletedEvent`; enum `ShelfPlacementFailReason` (NoData/CategoryMismatch/ShelfFull).
+- **Reward**: `EconomyService` на `ShelfProductPlacedEvent` начисляет монеты (`ProductData.RewardValue`).
+- **LevelProgress**: `ILevelManager` расширен (`PlacedProducts`, `CompletedShelves`,
+  `PlacementProgress`, `PlacementProgressChanged`); `LevelConfig` — `TotalShelfCapacity`/`TotalShelfCount`.
+- Документация: новый `SHELVES.md` (архитектура) и `SHELVES_SETUP.md` (настройка полок);
+  `ARCHITECTURE.md` §3.5 обновлён.
+
 ### Added — подбор и переноска (Задача 06)
 - **`Player/View/PlayerCarry.cs`** — переработан: запись `(ProductData + runtime Product)`,
   capacity-проверки (`CanAdd`/`CanRemove`/`IsFull`/`IsEmpty`), pickup (`TryAdd`),

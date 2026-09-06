@@ -16,7 +16,7 @@ MonoBehaviour:
   displayName: PD_Pasta
   category: {fileID: 11400000, guid: 2cd26bd8a55d6474a9b1d989d724a639, type: 2}
   icon: {fileID: 10911, guid: 0000000000000000f000000000000000, type: 0}
-  prefab: {fileID: 542054580730278015, guid: fdeafecf03ea85544aabec96d1d3fefa, type: 3}
+  prefab: {fileID: 6585967865353209568, guid: dadc98876a610a54c805dbbf036f125b, type: 3}
   boxPrefab: {fileID: 542054580730278015, guid: fdeafecf03ea85544aabec96d1d3fefa, type: 3}
   rewardValue: 12
   visualSettings:

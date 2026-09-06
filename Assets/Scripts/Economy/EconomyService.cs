@@ -12,6 +12,7 @@ namespace ShelfRush.Economy
         private readonly Wallet _wallet;
         private IEventBus _events;
         private System.IDisposable _orderCompletedSubscription;
+        private System.IDisposable _shelfPlacedSubscription;
 
         public EconomyService(Wallet wallet) => _wallet = wallet ?? new Wallet();
 
@@ -28,11 +29,17 @@ namespace ShelfRush.Economy
 
             // Data flow: Customer (заказ выполнен) -> Economy (награда) -> UI.
             _orderCompletedSubscription = _events.Subscribe<CustomerOrderCompletedEvent>(OnOrderCompleted);
+
+            // Shelf System: размещение товара на полку -> reward за размещение.
+            // Награда выдаётся ТОЛЬКО при успешном ShelfProductPlacedEvent (контроллер
+            // публикует его только для правильного товара и свободного слота).
+            _shelfPlacedSubscription = _events.Subscribe<ShelfProductPlacedEvent>(OnShelfProductPlaced);
         }
 
         public void Dispose()
         {
             _orderCompletedSubscription?.Dispose();
+            _shelfPlacedSubscription?.Dispose();
             _events = null;
         }
 
@@ -69,6 +76,21 @@ namespace ShelfRush.Economy
             if (evt.Reward > 0)
             {
                 AddCurrency(CurrencyType.Coins, evt.Reward);
+            }
+        }
+
+        /// <summary>
+        /// Награда за размещение товара на полке. Публикуется контроллером полки ТОЛЬКО
+        /// при успешном размещении (правильная категория + свободный слот), поэтому
+        /// неверный товар никогда не приносит reward.
+        /// </summary>
+        private void OnShelfProductPlaced(ShelfProductPlacedEvent evt)
+        {
+            if (evt.Product == null) return;
+            var reward = evt.Product.RewardValue;
+            if (reward > 0)
+            {
+                AddCurrency(CurrencyType.Coins, reward);
             }
         }
     }

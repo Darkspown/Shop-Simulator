@@ -16,7 +16,7 @@ MonoBehaviour:
   displayName: PD_Juice
   category: {fileID: 11400000, guid: 1701bf4f2825b2944b70a4f62e0aa0dd, type: 2}
   icon: {fileID: 10913, guid: 0000000000000000f000000000000000, type: 0}
-  prefab: {fileID: 3246418408599508323, guid: eb9c0d1f7957a584eb8dd29312a11078, type: 3}
+  prefab: {fileID: 6585967865353209568, guid: 680d01808173c4741b7a9899f834b9fe, type: 3}
   boxPrefab: {fileID: 3246418408599508323, guid: eb9c0d1f7957a584eb8dd29312a11078, type: 3}
   rewardValue: 7
   visualSettings:

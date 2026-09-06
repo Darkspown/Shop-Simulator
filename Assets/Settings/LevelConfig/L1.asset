@@ -13,8 +13,15 @@ MonoBehaviour:
   m_Name: L1
   m_EditorClassIdentifier: Assembly-CSharp::ShelfRush.Levels.LevelConfig
   levelIndex: 0
-  availableProducts: []
-  shelves: []
+  availableProducts:
+  - {fileID: 11400000, guid: 4be61898238237d47a5be8236cc6063e, type: 2}
+  - {fileID: 11400000, guid: fb674ee023a4c194289f18fb270411a3, type: 2}
+  - {fileID: 11400000, guid: d345d1305947d894bb1ef9b1402697a9, type: 2}
+  - {fileID: 11400000, guid: 577a4cf956c669f47bd6748cb69d2fc4, type: 2}
+  - {fileID: 11400000, guid: a819441007c2eed41976bcaed8db3f1e, type: 2}
+  shelves:
+  - {fileID: 11400000, guid: 484a265a0459f024095801258b649e6d, type: 2}
+  - {fileID: 11400000, guid: 02c6b3d121577754e950ab9d92bc40a2, type: 2}
   targetOrders: 5
   timeLimitSeconds: 90
-  carryCapacity: 1
+  carryCapacity: 2

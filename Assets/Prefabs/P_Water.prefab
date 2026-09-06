@@ -125,6 +125,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 14cd9cf1271bf0843b6acec97c762b04, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ShelfRush.Products.Product
+  initialData: {fileID: 11400000, guid: 4be61898238237d47a5be8236cc6063e, type: 2}
 --- !u!1 &6805573026586572368
 GameObject:
   m_ObjectHideFlags: 0

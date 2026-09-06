@@ -68,6 +68,46 @@ namespace ShelfRush.Core
         }
     }
 
+    /// <summary>
+    /// Товар успешно размещён на полку (публикует ShelfController). Gameplay-подписка:
+    /// EconomyService выдаёт награду, LevelManager обновляет прогресс.
+    /// Не публикуется при неверной категории / заполненной полке.
+    /// </summary>
+    public readonly struct ShelfProductPlacedEvent
+    {
+        public readonly ShelfData Shelf;
+        public readonly ProductData Product;
+
+        public ShelfProductPlacedEvent(ShelfData shelf, ProductData product)
+        {
+            Shelf = shelf;
+            Product = product;
+        }
+    }
+
+    /// <summary>Попытка размещения отклонена (публикует ShelfController).</summary>
+    public readonly struct ShelfPlacementFailedEvent
+    {
+        public readonly ShelfData Shelf;
+        public readonly ProductData Product;
+        public readonly ShelfPlacementFailReason Reason;
+
+        public ShelfPlacementFailedEvent(ShelfData shelf, ProductData product, ShelfPlacementFailReason reason)
+        {
+            Shelf = shelf;
+            Product = product;
+            Reason = reason;
+        }
+    }
+
+    /// <summary>Все слоты полки заполнены (публикует ShelfController при переходе в полное состояние).</summary>
+    public readonly struct ShelfCompletedEvent
+    {
+        public readonly ShelfData Shelf;
+
+        public ShelfCompletedEvent(ShelfData shelf) => Shelf = shelf;
+    }
+
     /// <summary>Создан новый заказ клиента (публикует CustomerService).</summary>
     public readonly struct CustomerOrderCreatedEvent
     {

@@ -36,7 +36,6 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 7715151157744185211}
-  - {fileID: 2355000643391044105}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &1963296882653645746
@@ -100,7 +99,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ShelfRush.Player.View.PlayerCarry
   config: {fileID: 11400000, guid: 5baa7c8d305e8494caf44902e547d25d, type: 2}
   carryAnchor: {fileID: 2355000643391044105}
-  stackOffset: {x: 0, y: 0.12, z: 0}
+  stackOffset: {x: 0, y: 1.5, z: 0}
 --- !u!114 &9079284962250098899
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -164,12 +163,12 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 7033946847475694170}
   serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0, y: 1.32, z: 0.79}
-  m_LocalScale: {x: 0.34239, y: 0.34239, z: 0.34239}
+  m_LocalRotation: {x: 0.015876308, y: 1.2434498e-12, z: 9.307e-13, w: 0.999874}
+  m_LocalPosition: {x: 0, y: 0.3501122, z: 0.54325503}
+  m_LocalScale: {x: 0.34239, y: 0.34239003, z: 0.34239003}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 8592836109058873593}
+  m_Father: {fileID: 5071806501232560461}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!33 &1655212019346948256
 MeshFilter:
@@ -302,12 +301,20 @@ PrefabInstance:
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
-    m_AddedGameObjects: []
+    m_AddedGameObjects:
+    - targetCorrespondingSourceObject: {fileID: 3723145604663269729, guid: 8fba94173e2a97041a18861de4fdcc9c, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 2355000643391044105}
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 8fba94173e2a97041a18861de4fdcc9c, type: 3}
 --- !u!95 &3263449476670986237 stripped
 Animator:
   m_CorrespondingSourceObject: {fileID: 6378207671594616785, guid: 8fba94173e2a97041a18861de4fdcc9c, type: 3}
+  m_PrefabInstance: {fileID: 8487570161031254060}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &5071806501232560461 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 3723145604663269729, guid: 8fba94173e2a97041a18861de4fdcc9c, type: 3}
   m_PrefabInstance: {fileID: 8487570161031254060}
   m_PrefabAsset: {fileID: 0}
 --- !u!4 &7715151157744185211 stripped

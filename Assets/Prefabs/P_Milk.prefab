@@ -171,3 +171,4 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 14cd9cf1271bf0843b6acec97c762b04, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ShelfRush.Products.Product
+  initialData: {fileID: 11400000, guid: d345d1305947d894bb1ef9b1402697a9, type: 2}

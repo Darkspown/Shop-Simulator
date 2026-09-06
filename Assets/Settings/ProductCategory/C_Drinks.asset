@@ -13,4 +13,4 @@ MonoBehaviour:
   m_Name: C_Drinks
   m_EditorClassIdentifier: Assembly-CSharp::ShelfRush.Products.ProductCategory
   displayName: Water
-  color: {r: 0.2396226, g: 0.7281012, b: 1, a: 1}
+  color: {r: 0, g: 0.35742068, b: 0.554717, a: 1}

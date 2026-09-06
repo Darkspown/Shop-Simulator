@@ -29,6 +29,24 @@ namespace ShelfRush.Levels
         public int TargetOrders => Mathf.Max(1, targetOrders);
         public float TimeLimitSeconds => Mathf.Max(10f, timeLimitSeconds);
 
+        /// <summary>Суммарная вместимость всех полок уровня (для прогресса наполнения).</summary>
+        public int TotalShelfCapacity
+        {
+            get
+            {
+                var arr = Shelves;
+                var total = 0;
+                for (var i = 0; i < arr.Length; i++)
+                {
+                    if (arr[i] != null) total += arr[i].SlotCapacity;
+                }
+                return total;
+            }
+        }
+
+        /// <summary>Число полок уровня.</summary>
+        public int TotalShelfCount => Shelves.Length;
+
         /// <summary>Вместимость переноски на этом уровне (никогда не меньше 1).</summary>
         public int CarryCapacity => Mathf.Max(1, carryCapacity);
     }

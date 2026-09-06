@@ -100,9 +100,22 @@ Assets/Scripts/
   включая `GetByCategory`.
 
 ### 3.5 Shelves
-- `ShelfData` — ScriptableObject полки (товар, вместимость, точки размещения).
-- `IStockService` / `StockService` — учёт остатков: `RegisterShelf`, `GetStock`,
-  `TryTakeProduct`, `Restock`; публикует `ShelfStockChangedEvent`.
+- `ShelfData` — ScriptableObject полки. Для **Shelf System (placement)**:
+  `AllowedCategory` (ProductCategory, не строка), `Capacity`, `Slots`, `InteractionRadius`,
+  `SlotCapacity` (= min(Capacity, Slots.Length)). Legacy поля `Product`/`Capacity` сохранены
+  для режима **Stock** (`IStockService`).
+- `ShelfController` (MonoBehaviour) — ядро placement: главная проверка
+  `ProductData.Category == ShelfData.AllowedCategory`; `CanPlace`/`TryPlace`/`TryPlaceRange`;
+  `CurrentAmount`; создаёт runtime-слоты `ShelfSlot` из `ShelfData.Slots`; события
+  `OnProductPlaced`/`OnPlacementFailed`/`OnCategoryMismatch`/`OnShelfFull`/`OnShelfCompleted`;
+  публикует `ShelfProductPlacedEvent`/`ShelfPlacementFailedEvent`/`ShelfCompletedEvent`;
+  feedback (highlight+bounce / негативный). Только правильный товар даёт reward + прогресс.
+- `ShelfSlot` (MonoBehaviour) — слот размещения; `ShelfInteraction` (`IInteractable`) —
+  размещает товары из рук игрока (остаток остаётся у игрока).
+- `IStockService` / `StockService` — учёт остатков (legacy «забор товара»): `RegisterShelf`,
+  `GetStock`, `TryTakeProduct`, `Restock`; публикует `ShelfStockChangedEvent`.
+- Интеграция: `EconomyService` → reward за `ShelfProductPlacedEvent`; `LevelManager` →
+  `PlacedProducts`/`CompletedShelves`/`PlacementProgress` (см. `Documentation/SHELVES.md`).
 
 ### 3.6 Customers
 - `CustomerOrder` — модель заказа (товар, количество, награда, лимит времени).
