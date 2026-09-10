@@ -11,13 +11,21 @@ namespace ShelfRush.Shelves
     public enum ShelfPlacementFailReason
     {
         /// <summary>Нет данных / полка или товар не настроены (не результат игровой проверки).</summary>
-        NoData,
+        NoData = 1,
 
         /// <summary>Категория товара не совпадает с AllowedCategory полки.</summary>
-        CategoryMismatch,
+        CategoryMismatch = 4,
 
         /// <summary>На полке нет свободных слотов.</summary>
-        ShelfFull,
+/// <summary>Нет отклонения  размещение разрешено.</summary>
+        None = 0,
+ 
+        /// <summary>Товар не задан / не настроенnull либо без категории. Задача 08: см <see cref="IProductPlacementValidator"/>.</summary>
+        InvalidProduct = 2,
+ 
+        /// <summary>Полка не задана / не настроена для размещенияnull либо без AllowedCategory Задача 08: см <see cref="IProductPlacementValidator"/>.</summary>
+        InvalidShelf = 3,
+        ShelfFull = 5,
     }
 
     /// <summary>
@@ -31,11 +39,11 @@ namespace ShelfRush.Shelves
     ///
     /// Events:
     /// <list type="bullet">
-    ///   <item><see cref="OnProductPlaced"/> — успешно размещён (после этого также публикуется ShelfProductPlacedEvent → reward + level progress).</item>
-    ///   <item><see cref="OnPlacementFailed"/> — попытка отклонена (с причина отклонения).</item>
-    ///   <item><see cref="OnCategoryMismatch"/> — неверная категория.</item>
-    ///   <item><see cref="OnShelfFull"/> — попытка разместить в заполненную полку.</item>
-    ///   <item><see cref="OnShelfCompleted"/> — полка стало заполненной.</item>
+    ///   <item><see cref="OnProductPlaced"/>  успешно размещён (после этого также публикуется ShelfProductPlacedEvent  reward + level progress).</item>
+    ///   <item><see cref="OnPlacementFailed"/>  попытка отклонена (с причина отклонения).</item>
+    ///   <item><see cref="OnCategoryMismatch"/>  неверная категория.</item>
+    ///   <item><see cref="OnShelfFull"/>  попытка разместить в заполненную полку.</item>
+    ///   <item><see cref="OnShelfCompleted"/>  полка стало заполненной.</item>
     /// </list>
     /// </summary>
     [AddComponentMenu("ShelfRush/Shelves/Shelf Controller")]
@@ -45,15 +53,15 @@ namespace ShelfRush.Shelves
         [Tooltip("Данные полки (ScriptableObject): AllowedCategory, Capacity, Slots, InteractionRadius.")]
         [SerializeField] private ShelfData data;
 
-        [Tooltip("(Опц.) Родитель слотов. Если пусто — используются/создаются на этой полке (transform).")]
+        [Tooltip("(Опц.) Родитель слотов. Если пусто  используются/создаются на этой полке (transform).")]
         [SerializeField] private Transform slotsRoot;
 
-        [Tooltip("Ручная настройка слотов: true — используются уже размещённые в сцене/префабе дочерние " +
+        [Tooltip("Ручная настройка слотов: true  используются уже размещённые в сцене/префабе дочерние " +
                  "объекты с компонентом ShelfSlot (позиции задаются вручную в редакторе); " +
-                 "false — слоты создаются автоматически из ShelfData.Slots/Auto.")]
+                 "false  слоты создаются автоматически из ShelfData.Slots/Auto.")]
         [SerializeField] private bool useManualSlots;
 
-        [Tooltip("(Опц.) Спавнер товаров. Если пусто — подтягивается/создаётся автоматически.")]
+        [Tooltip("(Опц.) Спавнер товаров. Если пусто  подтягивается/создаётся автоматически.")]
         [SerializeField] private ProductSpawner spawner;
 
         [Header("Fly-in (interaction zone)")]
@@ -63,6 +71,7 @@ namespace ShelfRush.Shelves
         private readonly List<ShelfSlot> _slots = new List<ShelfSlot>();
         private readonly List<GameObject> _created = new List<GameObject>();
         private IEventBus _events;
+        private IProductPlacementValidator _validator;
         private int _currentAmount;
 
         // --- События (view/hooks) ---
@@ -70,10 +79,10 @@ namespace ShelfRush.Shelves
         /// <summary>Товар успешно размещён на полку.</summary>
         public event Action<ShelfData, ProductData> OnProductPlaced;
 
-        /// <summary>Попытка размещения отклонена (причина — в параметре).</summary>
+        /// <summary>Попытка размещения отклонена (причина  в параметре).</summary>
         public event Action<ShelfData, ProductData, ShelfPlacementFailReason> OnPlacementFailed;
 
-        /// <summary>Неверная категория — размещение заблокировано.</summary>
+        /// <summary>Неверная категория  размещение заблокировано.</summary>
         public event Action<ShelfData, ProductData> OnCategoryMismatch;
 
         /// <summary>Попытка размещения в заполненную полку.</summary>
@@ -98,7 +107,7 @@ namespace ShelfRush.Shelves
         public int Capacity => data != null ? data.Capacity : 0;
 
         /// <summary>
-        /// Фактическая вместимость размещения — число созданных слотов
+        /// Фактическая вместимость размещения  число созданных слотов
         /// (после BuildSlots == data.SlotCapacity). Используется для проверки полноты.
         /// </summary>
         public int UsableCapacity => _slots.Count > 0 ? _slots.Count : (data != null ? data.SlotCapacity : 0);
@@ -112,6 +121,7 @@ namespace ShelfRush.Shelves
         private void Awake()
         {
             ResolveEventBus();
+            ResolveValidator();
             if (spawner == null) spawner = GetComponent<ProductSpawner>();
             if (spawner == null) spawner = gameObject.AddComponent<ProductSpawner>();
             BuildSlots();
@@ -130,26 +140,28 @@ namespace ShelfRush.Shelves
         /// </summary>
         public bool ValidatePlacement(ProductData product, out ShelfPlacementFailReason reason)
         {
-            reason = ShelfPlacementFailReason.NoData;
-            if (product == null) return false;
-            if (data == null || data.AllowedCategory == null) return false;
-            if (IsFull)
-            {
-                reason = ShelfPlacementFailReason.ShelfFull;
-                return false;
-            }
-            if (!ReferenceEquals(product.Category, data.AllowedCategory))
-            {
-                reason = ShelfPlacementFailReason.CategoryMismatch;
-                return false;
-            }
-            return true;
+            var result = EvaluatePlacement(product);
+            reason = result.Reason;
+            return result.Allowed;
+        }
+
+        /// <summary>
+        /// Structured result of the placement check ( Task 08: IProductPlacementValidator ).
+        /// Allows callers to inspect Allowed + reasons ( category mismatch / shelf full / invalid ).
+        /// </summary>
+        public ProductPlacementResult CanPlaceResult(ProductData product) => EvaluatePlacement(product);
+
+        /// <summary>Single entry point that delegates to the dedicated validator.</summary>
+        private ProductPlacementResult EvaluatePlacement(ProductData product)
+        {
+            ResolveValidator();
+            return _validator.CanPlace(product, data, _currentAmount);
         }
 
         /// <summary>
         /// Попытаться разместить ОДИН товар. При успехе: занимает слот, CurrentAmount++,
         /// вызывает OnProductPlaced + публикацию ShelfProductPlacedEvent (reward + progress),
-        /// корректный feedback. При неудаче — вызывает соответствующие события (OnCategoryMismatch /
+        /// корректный feedback. При неудаче  вызывает соответствующие события (OnCategoryMismatch /
         /// OnShelfFull), OnPlacementFailed и негативный feedback; товар НЕ удаляется, НЕ
         /// уничтожается и НЕ забирается у игрока (это делает вызывающий код через
         /// <c>PlayerCarry.TryDrop</c> только в случае успеха).
@@ -179,7 +191,7 @@ namespace ShelfRush.Shelves
         /// <summary>
         /// Разместить несколько товаров, если они подходят категории и есть свободные слоты.
         /// Размещается только доступное количество (пока есть слоты), остаток НЕ размещается
-        /// (остаётся у игрока — здесь он не извлекается из рук).
+        /// (остаётся у игрока  здесь он не извлекается из рук).
         /// Возвращает число успешно размещённых.
         /// </summary>
         public int TryPlaceRange(IEnumerable<ProductData> products)
@@ -189,7 +201,7 @@ namespace ShelfRush.Shelves
             foreach (var p in products)
             {
                 if (p == null) continue;
-                if (IsFull) break; // доступное количество исчерпано — остаток у игрока
+                if (IsFull) break; // доступное количество исчерпано  остаток у игрока
                 if (TryPlace(p, out _)) placed++;
             }
             return placed;
@@ -199,11 +211,11 @@ namespace ShelfRush.Shelves
         public bool Place(ProductData product) => TryPlace(product);
 
         /// <summary>
-        /// Разместить товар с «перелётом» из мировой позиции <paramref name="flyFromWorld"/>
+        /// Разместить товар с перелётом из мировой позиции <paramref name="flyFromWorld"/>
         /// (обычно позиция игрока при входе в <see cref="ShelfInteractionZone"/>) в свободный слот.
         /// Товар ОТРИСОВЫВАЕТСЯ у <paramref name="flyFromWorld"/> и DOTween-ом (перелёт + рост +
-        /// лёгкий bounce) садится в слот. Валидация/награда/события — как в <see cref="TryPlace"/>.
-        /// <paramref name="flyDelay"/> — задержка перед стартом перелёта (для «вереницы» товаров).
+        /// лёгкий bounce) садится в слот. Валидация/награда/события  как в <see cref="TryPlace"/>.
+        /// <paramref name="flyDelay"/>  задержка перед стартом перелёта (для вереницы товаров).
         /// </summary>
         public bool TryPlaceFlying(ProductData product, Vector3 flyFromWorld, float flyDelay, out ShelfPlacementFailReason reason)
         {
@@ -255,7 +267,7 @@ namespace ShelfRush.Shelves
             var targetScale = settings != null ? settings.Scale : Vector3.one;
             var targetLocal = settings != null ? settings.ShelfOffset : Vector3.zero;
 
-            // Спавн на слоте (виден сразу), scale сразу из ProductData — НЕ полагаемся на то, что твин "доживёт".
+            // Спавн на слоте (виден сразу), scale сразу из ProductData  НЕ полагаемся на то, что твин "доживёт".
             var world = slot.transform.TransformPoint(targetLocal);
             var visual = spawner.Spawn(product, world, slot.transform);
             if (visual == null) return null;
@@ -266,7 +278,7 @@ namespace ShelfRush.Shelves
 
             if (flyFrom.HasValue)
             {
-                // СТАРТОВАЯ позиция у игрока (для перелёта), но scale обычный → товар виден всё время.
+                // СТАРТОВАЯ позиция у игрока (для перелёта), но scale обычный  товар виден всё время.
                 var startLocal = slot.transform.InverseTransformPoint(flyFrom.Value);
                 t.localPosition = startLocal;
 
@@ -287,7 +299,7 @@ namespace ShelfRush.Shelves
             return visual;
         }
 
-        /// <summary>Зелёная подсветка товара при «перелёте» (без punch самой полки).</summary>
+        /// <summary>Зелёная подсветка товара при перелёте (без punch самой полки).</summary>
         private void PlayFlyVisualFeedback(Product visual)
         {
             if (visual == null) return;
@@ -370,7 +382,7 @@ namespace ShelfRush.Shelves
                 // Init не меняет позицию: передаём собственную localPosition (как расставлено вручную).
                 slot.Init(this, i, slot.transform.localPosition);
                 _slots.Add(slot);
-                // Ручные слоты не трогаем в ClearCreatedSlots — их не добавляем в _created.
+                // Ручные слоты не трогаем в ClearCreatedSlots  их не добавляем в _created.
             }
         }
 
@@ -455,13 +467,28 @@ namespace ShelfRush.Shelves
             if (data == null) return;
             var t = transform;
             t.DOKill();
-            // Короткий негативный «тряс» — визуальный сигнал блокировки.
+            // Короткий негативный тряс  визуальный сигнал блокировки.
             t.DOPunchPosition(new Vector3(0f, 0.03f, 0.08f), 0.18f, 4, 0.4f).SetLink(gameObject);
         }
 
         // ------------------------------------------------------------------
         //  Сервисы
         // ------------------------------------------------------------------
+
+        private void ResolveValidator()
+        {
+            if (_validator != null) return;
+            try
+            {
+                var bootstrap = GameBootstrap.Instance;
+                if (bootstrap != null && bootstrap.Services.TryGet(out _validator)) return;
+            }
+            catch
+            {
+                _validator = null;
+            }
+            _validator = new ProductPlacementValidator();
+        }
 
         private void ResolveEventBus()
         {

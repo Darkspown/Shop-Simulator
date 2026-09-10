@@ -21,7 +21,7 @@ namespace ShelfRush.Core
     /// инициализирует их в порядке зависимостей и тикает ITickable каждый кадр.
     ///
     /// ВАЖНО: здесь фабрикуются объекты систем (plain C#). Сцена не используется,
-    /// а сам компонент лишь «разгоняет» архитектуру.
+    /// а сам компонент лишь разгоняет архитектуру.
     /// </summary>
     public sealed class GameBootstrap : MonoBehaviour
     {
@@ -39,7 +39,7 @@ namespace ShelfRush.Core
         [SerializeField] private LevelConfig[] levels;
 
         [Header("MOBILE (optional)")]
-        [Tooltip("Экземпляр виртуального джойстика на Canvas (prefab). Если не назначен — мобильный ввод работает свайпом.")]
+        [Tooltip("Экземпляр виртуального джойстика на Canvas (prefab). Если не назначен  мобильный ввод работает свайпом.")]
         [SerializeField] private VirtualJoystick mobileJoystick;
 
         private ServiceLocator _services;
@@ -86,6 +86,7 @@ namespace ShelfRush.Core
             var save = new PlayerPrefsSaveService();
             var pool = new LeanPoolService();
             var catalog = new ProductCatalog(products ?? Array.Empty<ProductData>());
+            var placementValidator = new ProductPlacementValidator();
             var input = new InputService();
             var playerInput = new PlayerInput();
             var wallet = new Wallet();
@@ -102,6 +103,7 @@ namespace ShelfRush.Core
             _services.Register<ISaveService>(save);
             _services.Register<IPoolService>(pool);
             _services.Register<IProductCatalog>(catalog);
+            _services.Register<IProductPlacementValidator>(placementValidator);
             _services.Register<IInputService>(input);
             _services.Register<IPlayerInput>(playerInput);
             _services.Register<IEconomyService>(economy);
@@ -124,6 +126,7 @@ namespace ShelfRush.Core
             Initialize(save);
             Initialize(pool);
             Initialize(catalog);
+            Initialize(placementValidator);
             Initialize(input);
             Initialize(playerInput);
             Initialize(economy);
