@@ -15,5 +15,5 @@ MonoBehaviour:
   allowedCategory: {fileID: 11400000, guid: 1701bf4f2825b2944b70a4f62e0aa0dd, type: 2}
   placements: []
   interactionRadius: 2
-  capacity: 8
+  capacity: 10
   product: {fileID: 0}

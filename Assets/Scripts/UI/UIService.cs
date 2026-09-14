@@ -27,7 +27,7 @@ namespace ShelfRush.UI
             _subscriptions.Add(_events.Subscribe<CustomerOrderCreatedEvent>(e => HUD?.ShowOrder(e.Order)));
             _subscriptions.Add(_events.Subscribe<CustomerOrderCompletedEvent>(e => HUD?.ShowOrderCompleted(e.Reward)));
             _subscriptions.Add(_events.Subscribe<LevelStartedEvent>(e => HUD?.ShowLevelStart(e.Config)));
-            _subscriptions.Add(_events.Subscribe<LevelCompletedEvent>(e => HUD?.ShowLevelComplete(e.CompletedOrders >= e.TargetOrders, e.CompletedOrders, e.TargetOrders)));
+            _subscriptions.Add(_events.Subscribe<LevelCompletedEvent>(e => HUD?.ShowLevelComplete(e.Success, e.CompletedObjectives, e.TargetTotal)));
             _subscriptions.Add(_events.Subscribe<LevelPauseChangedEvent>(e => HUD?.SetPaused(e.Paused)));
         }
 

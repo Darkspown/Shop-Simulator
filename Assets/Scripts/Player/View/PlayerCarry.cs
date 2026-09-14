@@ -16,7 +16,7 @@ namespace ShelfRush.Player.View
     ///
     /// Принципы:
     /// - Прогрессия вместимости НЕ хранится здесь. <see cref="Capacity"/> берётся из
-    ///   текущего уровня (<see cref="LevelConfig.CarryCapacity"/> через
+    ///   текущего уровня (<see cref="LevelData.CarryCapacity"/> через
     ///   <see cref="ILevelManager"/>) с фолбэком на <see cref="PlayerConfig"/>.
     /// - Визуал товаров спавнится/возвращается через LeanPool (<see cref="IPoolService"/>),
     ///   а не Instantiate/Destroy.

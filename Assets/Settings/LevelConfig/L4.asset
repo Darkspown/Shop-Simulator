@@ -11,10 +11,8 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 31fac4301e3925d439a38cc54c7427a5, type: 3}
   m_Name: L4
-  m_EditorClassIdentifier: Assembly-CSharp::ShelfRush.Levels.LevelConfig
+  m_EditorClassIdentifier: Assembly-CSharp::ShelfRush.Levels.LevelData
   levelIndex: 3
-  availableProducts: []
-  shelves: []
-  targetOrders: 5
-  timeLimitSeconds: 90
+  objectives: []
+  completionReward: 500
   carryCapacity: 5

@@ -13,7 +13,7 @@ namespace ShelfRush.UI
         void SetBalance(CurrencyType currency, int amount);
         void ShowOrder(CustomerOrder order);
         void ShowOrderCompleted(int reward);
-        void ShowLevelStart(LevelConfig config);
+        void ShowLevelStart(LevelData config);
         void ShowLevelComplete(bool success, int completed, int target);
         void SetPaused(bool paused);
     }

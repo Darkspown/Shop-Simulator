@@ -36,7 +36,7 @@ namespace ShelfRush.Core
         [SerializeField] private PlayerConfig playerConfig;
         [SerializeField] private PlayerInputConfig playerInputConfig;
         [SerializeField] private ProductData[] products;
-        [SerializeField] private LevelConfig[] levels;
+        [SerializeField] private LevelData[] levels;
 
         [Header("MOBILE (optional)")]
         [Tooltip("Экземпляр виртуального джойстика на Canvas (prefab). Если не назначен  мобильный ввод работает свайпом.")]
@@ -95,7 +95,7 @@ namespace ShelfRush.Core
             var customers = new CustomerService();
             var player = new PlayerController();
             var ui = new UIService();
-            var levelManager = new LevelManager(levels ?? Array.Empty<LevelConfig>());
+            var levelManager = new LevelManager(levels ?? Array.Empty<LevelData>());
 
             // Register by interface (контракты для остальных систем).
             _services.Register<IGameStateMachine>(gameState);

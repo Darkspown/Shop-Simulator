@@ -1,24 +1,28 @@
 namespace ShelfRush.Levels
 {
     /// <summary>
-    /// Управление уровнями: старт/финиш, прогресс заказов, таймер, пауза.
-    /// Контракт для чужих систем (UI, GameBootstrap, Input).
+    /// Управление уровнями: старт/финиш, прогресс по целям (<see cref="LevelProgress"/>),
+    /// пауза. Контракт для чужих систем (UI, GameBootstrap, Input).
+    /// Уровень определяется данными (<see cref="LevelData"/>) — никакого хардкода в MonoBehaviour.
     /// </summary>
     public interface ILevelManager : Core.IGameService, Core.ITickable
     {
-        LevelConfig Current { get; }
-        int CompletedOrders { get; }
+        /// <summary>Текущий уровень (данные уровня; null, если уровень не активен).</summary>
+        LevelData Current { get; }
 
-        /// <summary>Сколько товаров размещено на полках уровня (ShelfProductPlacedEvent).</summary>
+        /// <summary>Runtime-прогресс текущего уровня по целям (0/10 … 10/10).</summary>
+        LevelProgress Progress { get; }
+
+        /// <summary>Сколько единиц товара размещено за текущий уровень (сумма по целям).</summary>
         int PlacedProducts { get; }
 
-        /// <summary>Сколько полок уровня полностью заполнено (ShelfCompletedEvent).</summary>
+        /// <summary>Сколько целей текущего уровня полностью выполнено.</summary>
         int CompletedShelves { get; }
 
-        /// <summary>Прогресс наполнения полок уровня: PlacedProducts / суммарная вместимость (0..1).</summary>
+        /// <summary>Общий прогресс уровня: PlacedProducts / TotalTarget (0..1).</summary>
         float PlacementProgress { get; }
 
-        /// <summary>Событие изменения прогресса наполнения полок (для UI/LevelProgress).</summary>
+        /// <summary>Событие изменения прогресса (для UI / LevelProgress).</summary>
         event System.Action PlacementProgressChanged;
 
         void StartLevel(int index);

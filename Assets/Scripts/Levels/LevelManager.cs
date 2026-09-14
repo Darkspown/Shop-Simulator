@@ -1,55 +1,53 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using ShelfRush.Core;
-using ShelfRush.Customers;
+using ShelfRush.Economy;
 using ShelfRush.Shelves;
 
 namespace ShelfRush.Levels
 {
     /// <summary>
-    /// Менеджер уровней. При старте регистрирует полки в StockService, публикует
-    /// LevelStartedEvent, тикает таймер, считает выполненные заказы (подписка на
-    /// CustomerOrderCompletedEvent) и завершает уровень по цели или тайм-ауту.
+    /// Менеджер уровней. Data-driven: конкретный уровень описан в <see cref="LevelData"/> (SO),
+    /// здесь НЕТ хардкода товара/полки/цели. Один LevelManager работает с любым LevelData.
+    /// Flow (L1): Place (ShelfController → ShelfProductPlacedEvent) → Reward за товар
+    /// (EconomyService) → Progress (0/10..10/10) → 10/10 → Shelf Complete (reward за цель)
+    /// → Level Complete (reward за уровень) → LevelCompletedEvent.
     /// </summary>
     public sealed class LevelManager : ILevelManager
     {
-        private readonly List<LevelConfig> _levels = new List<LevelConfig>();
+        private readonly List<LevelData> _levels = new List<LevelData>();
 
         private IEventBus _events;
         private IStockService _stock;
-        private ICustomerService _customers;
-        private System.IDisposable _orderCompletedSub;
-        private System.IDisposable _orderLeftSub;
-        private System.IDisposable _pauseRequestSub;
+        private IEconomyService _economy;
+
         private System.IDisposable _shelfPlacedSub;
         private System.IDisposable _shelfCompletedSub;
+        private System.IDisposable _pauseRequestSub;
 
-        private float _remainingTime;
         private bool _paused;
+        private bool _finished;
 
-        /// <summary>Сколько товаров размещено на полках текущего уровня.</summary>
-        public int PlacedProducts { get; private set; }
+        public LevelData Current { get; private set; }
 
-        /// <summary>Сколько полок текущего уровня полностью заполнено.</summary>
+        public LevelProgress Progress { get; private set; }
+
+        public int PlacedProducts => Progress != null ? Progress.TotalPlaced : 0;
+
         public int CompletedShelves { get; private set; }
 
-        public LevelConfig Current { get; private set; }
-        public int CompletedOrders { get; private set; }
-
-        /// <summary>Прогресс наполнения полок уровня (0..1).</summary>
         public float PlacementProgress
         {
             get
             {
-                if (Current == null) return 0f;
-                var total = Current.TotalShelfCapacity;
+                if (Progress == null) return 0f;
+                var total = Progress.TotalTarget;
                 return total <= 0 ? 0f : System.Math.Clamp(PlacedProducts / (float)total, 0f, 1f);
             }
         }
 
-        /// <summary>Событие изменения прогресса наполнения полок (для UI/LevelProgress).</summary>
         public event System.Action PlacementProgressChanged;
 
-        public LevelManager(IEnumerable<LevelConfig> levels)
+        public LevelManager(IEnumerable<LevelData> levels)
         {
             if (levels != null)
             {
@@ -64,36 +62,26 @@ namespace ShelfRush.Levels
         {
             _events = services.Get<IEventBus>();
             _stock = services.Get<IStockService>();
-            _customers = services.Get<ICustomerService>();
+            _economy = services.Get<IEconomyService>();
 
-            _orderCompletedSub = _events.Subscribe<CustomerOrderCompletedEvent>(OnOrderCompleted);
-            _orderLeftSub = _events.Subscribe<CustomerLeftEvent>(OnCustomerLeft);
-            _pauseRequestSub = _events.Subscribe<GamePauseRequestedEvent>(OnPauseRequested);
             _shelfPlacedSub = _events.Subscribe<ShelfProductPlacedEvent>(OnShelfProductPlaced);
             _shelfCompletedSub = _events.Subscribe<ShelfCompletedEvent>(OnShelfCompleted);
+            _pauseRequestSub = _events.Subscribe<GamePauseRequestedEvent>(OnPauseRequested);
         }
 
         public void Dispose()
         {
-            _orderCompletedSub?.Dispose();
-            _orderLeftSub?.Dispose();
-            _pauseRequestSub?.Dispose();
             _shelfPlacedSub?.Dispose();
             _shelfCompletedSub?.Dispose();
+            _pauseRequestSub?.Dispose();
             _events = null;
             _stock = null;
-            _customers = null;
+            _economy = null;
         }
 
         public void Tick(float deltaTime)
         {
-            if (Current == null || _paused) return;
-
-            _remainingTime -= deltaTime;
-            if (_remainingTime <= 0f)
-            {
-                FinishLevel();
-            }
+            // Level 1 не имеет таймера: цель достигается размещением товаров.
         }
 
         public void StartLevel(int index)
@@ -101,17 +89,20 @@ namespace ShelfRush.Levels
             if (index < 0 || index >= _levels.Count) return;
 
             Current = _levels[index];
-            CompletedOrders = 0;
-            PlacedProducts = 0;
+            Progress = new LevelProgress(Current);
             CompletedShelves = 0;
-            PlacementProgressChanged?.Invoke();
-            _remainingTime = Current.TimeLimitSeconds;
             _paused = false;
+            _finished = false;
+            PlacementProgressChanged?.Invoke();
 
-            // Регистрируем полки уровня в учёте запасов.
-            foreach (var shelf in Current.Shelves)
+            // Регистрируем полки всех целей уровня в учёте запасов.
+            var objectives = Current.Objectives;
+            for (var i = 0; i < objectives.Length; i++)
             {
-                _stock.RegisterShelf(shelf);
+                if (objectives[i] != null && objectives[i].TargetShelf != null)
+                {
+                    _stock.RegisterShelf(objectives[i].TargetShelf);
+                }
             }
 
             _events?.Publish(new LevelStartedEvent(Current));
@@ -129,47 +120,70 @@ namespace ShelfRush.Levels
             if (Current != null) StartLevel(Current.LevelIndex);
         }
 
-        private void OnOrderCompleted(CustomerOrderCompletedEvent evt)
-        {
-            if (Current == null) return;
-            CompletedOrders++;
-            if (CompletedOrders >= Current.TargetOrders)
-            {
-                FinishLevel();
-            }
-        }
+        private void OnPauseRequested(GamePauseRequestedEvent evt) => SetPaused(evt.Paused);
 
-        private void OnPauseRequested(GamePauseRequestedEvent evt)
-        {
-            SetPaused(evt.Paused);
-        }
-
-        private void OnCustomerLeft(CustomerLeftEvent evt)
-        {
-            // Базовая архитектура: уход клиента не штрафует прогресс. Логика штрафов — позже.
-        }
-
-        /// <summary>Товар размещён на полку → обновляем прогресс наполнения полок уровня.</summary>
+        /// <summary>Товар размещён → прогресс цели + награды (цель и уровень).</summary>
         private void OnShelfProductPlaced(ShelfProductPlacedEvent evt)
         {
-            if (Current == null) return;
-            PlacedProducts++;
+            if (Current == null || Progress == null || _finished) return;
+
+            var index = FindObjective(evt);
+            if (index < 0) return;
+
+            if (Progress.Advance(index))
+            {
+                CompletedShelves++;
+                var obj = Current.Objectives[index];
+                if (obj != null && obj.ShelfCompleteReward > 0)
+                {
+                    _economy?.AddCurrency(CurrencyType.Coins, obj.ShelfCompleteReward);
+                }
+            }
             PlacementProgressChanged?.Invoke();
+
+            if (Progress.IsComplete) FinishLevel();
         }
 
-        /// <summary>Полка заполнена целиком → увеличиваем счётчик готовых полок.</summary>
+        /// <summary>Страховка: полка физически заполнилась и все цели достигнуты → завершаем.</summary>
         private void OnShelfCompleted(ShelfCompletedEvent evt)
         {
-            if (Current == null) return;
-            CompletedShelves++;
-            PlacementProgressChanged?.Invoke();
+            if (Current == null || Progress == null || _finished) return;
+            if (Progress.IsComplete) FinishLevel();
+        }
+
+        /// <summary>Первая невыполненная цель, которой соответствует размещение.</summary>
+        private int FindObjective(ShelfProductPlacedEvent evt)
+        {
+            var objectives = Current.Objectives;
+            for (var i = 0; i < objectives.Length; i++)
+            {
+                var o = objectives[i];
+                if (o == null || o.Type != LevelObjectiveType.FillShelf) continue;
+                if (o.TargetShelf != evt.Shelf) continue;
+                if (o.TargetProduct != null && o.TargetProduct != evt.Product) continue;
+                if (Progress.IsCompleted(i)) continue;
+                return i;
+            }
+            return -1;
         }
 
         private void FinishLevel()
         {
+            if (_finished) return;
+            _finished = true;
+
             var config = Current;
+            var placed = PlacedProducts;
+            var total = config != null ? config.TotalTarget : 0;
+            var success = config != null && Progress != null && Progress.IsComplete;
+
+            if (config != null && config.CompletionReward > 0)
+            {
+                _economy?.AddCurrency(CurrencyType.Coins, config.CompletionReward);
+            }
+
             Current = null;
-            _events?.Publish(new LevelCompletedEvent(config, CompletedOrders, config.TargetOrders));
+            _events?.Publish(new LevelCompletedEvent(config, success, CompletedShelves, placed, total));
         }
     }
 }

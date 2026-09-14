@@ -140,23 +140,30 @@ namespace ShelfRush.Core
     /// <summary>Начат уровень (публикует LevelManager).</summary>
     public readonly struct LevelStartedEvent
     {
-        public readonly LevelConfig Config;
+        public readonly LevelData Config;
 
-        public LevelStartedEvent(LevelConfig config) => Config = config;
+        public LevelStartedEvent(LevelData config) => Config = config;
     }
 
-    /// <summary>Уровень завершён (публикует LevelManager).</summary>
+    /// <summary>
+    /// Уровень завершён (публикует LevelManager). Для Level 1: успех — когда все цели
+    /// (прогресс 10/10) достигнуты; после — награда за уровень (LevelData.CompletionReward).
+    /// </summary>
     public readonly struct LevelCompletedEvent
     {
-        public readonly LevelConfig Config;
-        public readonly int CompletedOrders;
-        public readonly int TargetOrders;
+        public readonly LevelData Config;
+        public readonly bool Success;
+        public readonly int CompletedObjectives;
+        public readonly int PlacedProducts;
+        public readonly int TargetTotal;
 
-        public LevelCompletedEvent(LevelConfig config, int completedOrders, int targetOrders)
+        public LevelCompletedEvent(LevelData config, bool success, int completedObjectives, int placedProducts, int targetTotal)
         {
             Config = config;
-            CompletedOrders = completedOrders;
-            TargetOrders = targetOrders;
+            Success = success;
+            CompletedObjectives = completedObjectives;
+            PlacedProducts = placedProducts;
+            TargetTotal = targetTotal;
         }
     }
 

@@ -5,6 +5,25 @@
 
 ## [Unreleased]
 
+### Added  Система уровней  Задача 09: First Level (data-driven)
+
+- **`Levels/LevelData.cs`** (бывший `LevelConfig`, переименован, скрипт-GUID сохранён)  ScriptableObject уровня:
+  цели `LevelObjective[]`, `completionReward`, `carryCapacity`, `TotalTarget`. Все параметры уровня в данных,
+  никакого хардкода в MonoBehaviour.
+- **`Levels/LevelObjective.cs`** (новый)  enum `LevelObjectiveType` + определение цели `FillShelf`:
+  `TargetProduct`, `TargetShelf`, `TargetCount`, `ShelfCompleteReward`.
+- **`Levels/LevelProgress.cs`** (новый)  runtime-прогресс по целям (0/10 … 10/10), `Advance`, `IsComplete`.
+- **`Levels/LevelManager.cs`** (переработан)  логика первого уровня: Pickup → Carry → Place →
+  Reward → Progress → Repeat → Complete. Подписка на `ShelfProductPlacedEvent`/`ShelfCompletedEvent`;
+  награды за цель (Shelf Complete) и за уровень (Level Complete); регистрация полок целей в `IStockService`.
+- **`Levels/ILevelManager.cs`**  контракт переведён на `LevelData` + `LevelProgress`.
+- **`Core/GameEvents.cs`**  `LevelStartedEvent`/`LevelCompletedEvent` переведены на `LevelData`;
+  `LevelCompletedEvent` несёт `Success`/`CompletedObjectives`/`PlacedProducts`/`TargetTotal`.
+- **`Core/GameBootstrap.cs`**  поле `LevelData[] levels` (вместо `LevelConfig[]`).
+- **`UI/UIService.cs`**, **`UI/IHUDView.cs`**  обновлены под новые поля `LevelCompletedEvent` и тип `LevelData`.
+- **Ассеты**: `Settings/LevelConfig/L1.asset` получил цель (Water → Drinks, Target 10); L2–L5 переведены
+  на новую схему; `ShelfDataWater.asset` вместимость 8 → 10 (чтобы полку можно было наполнить до 10/10).
+- Документация: новый `LEVELS.md` (маппинг и пошаговое создание/подключение `LevelData`).
 ### Added  Продукт-плейсмент валидаторЗадача 08: Category Validation
 
 - **`Shelves/IProductPlaceholderValidator.cs`** (новый)  контракт отдельной проверки размещения продукта на полку:
